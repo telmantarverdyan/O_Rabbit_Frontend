@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#020504] text-emerald-100 font-mono antialiased selection:bg-emerald-500/30 selection:text-emerald-300;
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 75%),
+      linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 32px 32px, 32px 32px;
+  }
+}
+
+/* Custom terminal scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020504;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #112d20;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
+}
+
+/* Terminal HUD and glow utilities */
+.glow-emerald {
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6), 0 0 20px rgba(0, 255, 102, 0.2);
+}
+
+.glow-box-emerald {
+  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.2), inset 0 0 10px -3px rgba(16, 185, 129, 0.05);
+}
+
+.glow-box-cyan {
+  box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.2), inset 0 0 10px -3px rgba(6, 182, 212, 0.05);
+}
+
+.glow-box-crimson {
+  box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.2), inset 0 0 10px -3px rgba(239, 68, 68, 0.05);
+}
+
+.terminal-card {
+  @apply bg-[#060e0a]/90 border border-[#133023] rounded-xl backdrop-blur-md transition-all duration-200 hover:border-emerald-500/40 hover:shadow-terminal-sm;
+}
+
+.terminal-header {
+  @apply border-b border-[#133023] bg-[#040907]/90 px-4 py-3;
+}
+
