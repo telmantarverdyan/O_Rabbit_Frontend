@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import { Run, Task } from './types';
 import { mockStore } from './mockDataStore';
+import { getTableDetails } from '@/utils/tableCatalog';
 
 export interface SubmitRunPayload {
   job_id?: string;
@@ -23,37 +24,74 @@ export interface SubmitRunPayload {
   options?: Record<string, any>;
 }
 
+function normalizeRun(raw: any): Run {
+  const r = (raw && raw.run) ? raw.run : raw;
+  const rawTasks: Task[] = (raw && raw.tasks) ? raw.tasks : (r.tasks || []);
+  const tableName = (r.target_table || r.dataset_key?.replace(/^raw\//, '') || '').toLowerCase();
+
+  const taskRowsSum = rawTasks.reduce((sum, t) => sum + (t.rows_read || 0), 0);
+  const taskBytesSum = rawTasks.reduce((sum, t) => sum + (t.bytes_written || 0), 0);
+
+  const rowsTotal = (r.rows_total !== undefined && r.rows_total !== null && r.rows_total > 0)
+    ? r.rows_total
+    : taskRowsSum;
+
+  const bytesTotal = (r.bytes_total !== undefined && r.bytes_total !== null && r.bytes_total > 0)
+    ? r.bytes_total
+    : taskBytesSum;
+
+  const tasks: Task[] = rawTasks.map((t) => ({
+    ...t,
+    rows_read: t.rows_read || 0,
+    bytes_written: t.bytes_written || 0,
+  }));
+
+  return {
+    ...r,
+    id: String(r.id || ''),
+    dataset_key: r.dataset_key || (tableName ? `raw/${tableName}` : '—'),
+    created_at: r.created_at || r.started_at || new Date().toISOString(),
+    started_at: r.started_at || r.created_at || new Date().toISOString(),
+    rows_total: rowsTotal,
+    bytes_total: bytesTotal,
+    tasks,
+  };
+}
+
 export async function fetchRuns(): Promise<Run[]> {
   try {
-    const res = await apiClient<Run[] | { runs: Run[] }>('/runs');
-    if (Array.isArray(res) && res.length > 0) return res;
-    if (res && Array.isArray((res as any).runs) && (res as any).runs.length > 0) return (res as any).runs;
+    const res = await apiClient<any>('/runs');
+    const list = Array.isArray(res) ? res : (res?.runs || []);
+    if (list.length > 0) return list.map(normalizeRun);
   } catch {}
 
   try {
-    const res = await apiClient<Run[] | { runs: Run[] }>('/api/runs');
-    if (Array.isArray(res) && res.length > 0) return res;
-    if (res && Array.isArray((res as any).runs) && (res as any).runs.length > 0) return (res as any).runs;
+    const res = await apiClient<any>('/api/runs');
+    const list = Array.isArray(res) ? res : (res?.runs || []);
+    if (list.length > 0) return list.map(normalizeRun);
   } catch {}
 
-  return mockStore.getRuns();
+  return mockStore.getRuns().map(normalizeRun);
 }
 
 export async function fetchRunById(id: string): Promise<Run> {
   try {
-    return await apiClient<Run>(`/runs/${id}`);
-  } catch {
-    try {
-      return await apiClient<Run>(`/api/runs/${id}`);
-    } catch {
-      const run = mockStore.getRun(id);
-      if (run) return run;
-      // If not found by exact ID, return first mock run matching or fresh mock
-      const runs = mockStore.getRuns();
-      if (runs.length > 0) return runs[0];
-      throw new Error(`Run ${id} not found`);
-    }
-  }
+    const res = await apiClient<any>(`/runs/${id}`);
+    if (res) return normalizeRun(res);
+  } catch {}
+
+  try {
+    const res = await apiClient<any>(`/api/runs/${id}`);
+    if (res) return normalizeRun(res);
+  } catch {}
+
+  const run = mockStore.getRun(id);
+  if (run) return normalizeRun(run);
+
+  const runs = mockStore.getRuns();
+  if (runs.length > 0) return normalizeRun(runs[0]);
+
+  throw new Error(`Run ${id} not found`);
 }
 
 export async function submitJobRun(jobId: string, overrides: Record<string, any> = {}): Promise<Run> {

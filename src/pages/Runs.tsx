@@ -23,6 +23,7 @@ import {
   Database,
 } from 'lucide-react';
 import { Run, RunStatus } from '@/api/types';
+import { getTableDetails } from '@/utils/tableCatalog';
 
 export const Runs: React.FC = () => {
   const queryClient = useQueryClient();
@@ -210,9 +211,16 @@ export const Runs: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-emerald-950/40 text-emerald-200">
               {filteredRuns.map((run) => {
-                const mb = run.bytes_total
-                  ? (run.bytes_total / (1024 * 1024)).toFixed(2) + ' MB'
-                  : '—';
+                const rows = run.rows_total ?? 0;
+                const bytes = run.bytes_total ?? 0;
+                const sizeStr = bytes > 0
+                  ? (bytes >= 1024 * 1024
+                      ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+                      : `${(bytes / 1024).toFixed(1)} KB`)
+                  : '0 B';
+                const createdDate = run.created_at ? new Date(run.created_at) : new Date();
+                const createdTimeStr = !isNaN(createdDate.getTime()) ? createdDate.toLocaleTimeString() : 'Just now';
+
                 return (
                   <tr key={run.id} className="hover:bg-emerald-950/20 transition">
                     <td className="py-3 px-4 font-semibold text-emerald-300">
@@ -231,12 +239,12 @@ export const Runs: React.FC = () => {
                       {run.dataset_key || '—'}
                     </td>
                     <td className="py-3 px-4 text-emerald-600 text-[11px]">
-                      {new Date(run.created_at).toLocaleTimeString()}
+                      {createdTimeStr}
                     </td>
                     <td className="py-3 px-4 text-emerald-200 font-semibold">
-                      {run.rows_total ? run.rows_total.toLocaleString() : '—'}
+                      {rows.toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 text-cyan-400">{mb}</td>
+                    <td className="py-3 px-4 text-cyan-400">{sizeStr}</td>
                     <td className="py-3 px-4 text-right">
                       <Link
                         to={`/runs/${run.id}`}

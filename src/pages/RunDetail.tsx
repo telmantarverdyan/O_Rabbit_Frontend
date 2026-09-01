@@ -27,6 +27,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { Task, ParquetObject, RunEvent } from '@/api/types';
+import { getTableDetails } from '@/utils/tableCatalog';
 
 export const RunDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -255,17 +256,41 @@ export const RunDetail: React.FC = () => {
     });
   }
 
+  const taskSumRows = tasks.reduce((sum, t) => sum + (t.rows_read || 0), 0);
+  const realTotalRows = (run.rows_total !== undefined && run.rows_total !== null && run.rows_total > 0)
+    ? run.rows_total
+    : taskSumRows;
+
+  const taskSumBytes = tasks.reduce((sum, t) => sum + (t.bytes_written || 0), 0);
+  const realTotalBytes = (run.bytes_total !== undefined && run.bytes_total !== null && run.bytes_total > 0)
+    ? run.bytes_total
+    : taskSumBytes;
+
+  const sizeSubtitle = realTotalBytes > 0
+    ? (realTotalBytes >= 1024 * 1024
+        ? `${(realTotalBytes / (1024 * 1024)).toFixed(2)} MB uploaded to S3`
+        : `${(realTotalBytes / 1024).toFixed(1)} KB uploaded to S3`)
+    : '0 B uploaded to S3';
+
   const isCancellable = run.status === 'RUNNING' || run.status === 'PLANNING' || run.status === 'COMMITTING';
 
   let durationStr = '—';
   if (run.created_at) {
     const start = new Date(run.started_at || run.created_at).getTime();
     const end = run.finished_at ? new Date(run.finished_at).getTime() : Date.now();
-    const sec = Math.max(0, Math.floor((end - start) / 1000));
-    const mins = Math.floor(sec / 60);
-    const remainingSec = sec % 60;
-    durationStr = mins > 0 ? `${mins}m ${remainingSec}s` : `${sec}s`;
+    if (!isNaN(start) && !isNaN(end)) {
+      const sec = Math.max(0, Math.floor((end - start) / 1000));
+      const mins = Math.floor(sec / 60);
+      const remainingSec = sec % 60;
+      durationStr = mins > 0 ? `${mins}m ${remainingSec}s` : `${sec}s`;
+    }
   }
+
+  const createdDate = run.created_at ? new Date(run.created_at) : new Date();
+  const formattedStartTime = !isNaN(createdDate.getTime()) ? createdDate.toLocaleTimeString() : 'Just now';
+
+  const getTaskRows = (t: Task) => t.rows_read || 0;
+  const getTaskBytes = (t: Task) => t.bytes_written || 0;
 
   return (
     <div className="space-y-6 font-mono">
@@ -281,7 +306,7 @@ export const RunDetail: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-emerald-100 font-mono tracking-tight glow-emerald">
-                RUN-{run.id}
+                RUN-{String(run.id || '').slice(0, 16)}
               </h2>
               <StatusBadge status={run.status} size="md" />
             </div>
@@ -343,7 +368,7 @@ export const RunDetail: React.FC = () => {
         />
         <MetricCard
           title="Total Rows Read"
-          value={run.rows_total ? run.rows_total.toLocaleString() : '0'}
+          value={realTotalRows.toLocaleString()}
           subtitle="Extracted from source database"
           icon={Database}
           color="cyan"
@@ -351,18 +376,14 @@ export const RunDetail: React.FC = () => {
         <MetricCard
           title="Parquet Artifacts"
           value={allParquetObjects.length}
-          subtitle={
-            run.bytes_total
-              ? `${(run.bytes_total / (1024 * 1024)).toFixed(2)} MB total`
-              : 'Uploaded to object storage'
-          }
+          subtitle={sizeSubtitle}
           icon={Layers}
           color="purple"
         />
         <MetricCard
           title="Elapsed Duration"
           value={durationStr}
-          subtitle={`Started ${new Date(run.created_at).toLocaleTimeString()}`}
+          subtitle={`Started ${formattedStartTime}`}
           icon={Clock}
           color="amber"
         />
@@ -372,8 +393,8 @@ export const RunDetail: React.FC = () => {
       <ThroughputChart
         data={tasks.map((t, idx) => ({
           time: `Task-${t.partition_spec_json?.output_part || idx + 1}`,
-          rowsPerSec: t.rows_read || 0,
-          mbPerSec: Number(((t.bytes_written || 0) / (1024 * 1024)).toFixed(2)),
+          rowsPerSec: getTaskRows(t),
+          mbPerSec: Number((getTaskBytes(t) / (1024 * 1024)).toFixed(2)),
         }))}
         title="Partition Task Execution Velocity"
         metric="both"
@@ -481,11 +502,11 @@ export const RunDetail: React.FC = () => {
                         {task.worker_id ? `worker-${String(task.worker_id).slice(0, 6)}` : 'unassigned'}
                       </td>
                       <td className="py-3 px-4 text-emerald-200 font-semibold">
-                        {task.rows_read ? task.rows_read.toLocaleString() : '0'}
+                        {getTaskRows(task).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-cyan-400">
-                        {task.bytes_written
-                          ? `${(task.bytes_written / 1024).toFixed(1)} KB`
+                        {getTaskBytes(task) > 0
+                          ? `${(getTaskBytes(task) / 1024).toFixed(1)} KB`
                           : '0 KB'}
                       </td>
                       <td className="py-3 px-4 text-right">
