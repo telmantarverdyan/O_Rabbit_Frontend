@@ -19,7 +19,11 @@ export function getCustomBackendUrl(): string {
 
 export function setCustomBackendUrl(url: string): void {
   if (url) {
-    localStorage.setItem(BACKEND_URL_KEY, url.trim().replace(/\/$/, ''));
+    const trimmed = url.trim().replace(/\/$/, '');
+    if (!/^https?:\/\//i.test(trimmed)) {
+      throw new Error('Backend URL must start with http:// or https://');
+    }
+    localStorage.setItem(BACKEND_URL_KEY, trimmed);
   } else {
     localStorage.removeItem(BACKEND_URL_KEY);
   }

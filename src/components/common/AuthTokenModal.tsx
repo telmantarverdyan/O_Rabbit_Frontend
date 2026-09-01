@@ -5,6 +5,8 @@ import { Button } from './Button';
 import { getAuthToken, setAuthToken, getCustomBackendUrl, setCustomBackendUrl } from '@/api/client';
 import { Key, Server, Save, ShieldCheck } from 'lucide-react';
 
+import { useToast } from './Toast';
+
 interface AuthTokenModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,15 +18,21 @@ export const AuthTokenModal: React.FC<AuthTokenModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  const toast = useToast();
   const [token, setToken] = useState(getAuthToken());
   const [backendUrl, setBackendUrl] = useState(getCustomBackendUrl());
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthToken(token);
-    setCustomBackendUrl(backendUrl);
-    onSaved();
-    onClose();
+    try {
+      setAuthToken(token);
+      setCustomBackendUrl(backendUrl);
+      toast.success('Security settings saved');
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || 'Invalid URL');
+    }
   };
 
   return (

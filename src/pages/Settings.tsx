@@ -34,12 +34,16 @@ export const Settings: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthToken(token);
-    setCustomBackendUrl(backendUrl);
-    setSaveSuccess(true);
-    refetchStatus();
-    refetchHealth();
-    setTimeout(() => setSaveSuccess(false), 3000);
+    try {
+      setAuthToken(token);
+      setCustomBackendUrl(backendUrl);
+      setSaveSuccess(true);
+      refetchStatus();
+      refetchHealth();
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      toast.error(err?.message || 'Invalid configuration');
+    }
   };
 
   return (
