@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { ToastProvider } from '../common/Toast';
@@ -11,6 +11,9 @@ export const AppLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const navigate = useNavigate();
+  const gChordTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const gChordActiveRef = useRef<boolean>(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -18,21 +21,60 @@ export const AppLayout: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && (e.key === '`' || e.key === '~')) {
         e.preventDefault();
         setIsTerminalOpen((prev) => !prev);
+        return;
       }
 
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(
+        (e.target as HTMLElement)?.tagName
+      );
+
       // Open Shortcuts Help on '?' if not typing in input
-      if (
-        e.key === '?' &&
-        !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)
-      ) {
+      if (e.key === '?' && !isInput) {
         e.preventDefault();
         setIsShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      // Handle G-chord vim navigation when outside form inputs
+      if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (gChordActiveRef.current) {
+          gChordActiveRef.current = false;
+          if (gChordTimeoutRef.current) clearTimeout(gChordTimeoutRef.current);
+
+          const key = e.key.toLowerCase();
+          const routeMap: Record<string, string> = {
+            o: '/',
+            r: '/runs',
+            j: '/jobs',
+            q: '/query',
+            l: '/lineage',
+            d: '/datasets',
+            w: '/workers',
+            s: '/schedules',
+            m: '/maintenance',
+          };
+
+          if (routeMap[key]) {
+            e.preventDefault();
+            navigate(routeMap[key]);
+            return;
+          }
+        } else if (e.key.toLowerCase() === 'g') {
+          gChordActiveRef.current = true;
+          if (gChordTimeoutRef.current) clearTimeout(gChordTimeoutRef.current);
+          gChordTimeoutRef.current = setTimeout(() => {
+            gChordActiveRef.current = false;
+          }, 1500);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (gChordTimeoutRef.current) clearTimeout(gChordTimeoutRef.current);
+    };
+  }, [navigate]);
 
   return (
     <ToastProvider>

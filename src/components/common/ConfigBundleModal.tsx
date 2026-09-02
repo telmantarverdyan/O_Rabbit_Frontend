@@ -19,8 +19,17 @@ export const ConfigBundleModal: React.FC<ConfigBundleModalProps> = ({ isOpen, on
   const { data: jobs = [] } = useQuery({ queryKey: ['jobs'], queryFn: fetchJobs });
   const { data: connections = [] } = useQuery({ queryKey: ['connections'], queryFn: fetchConnections });
 
-  const schedules = JSON.parse(localStorage.getItem('orabbit_cron_schedules') || '[]');
-  const alerts = JSON.parse(localStorage.getItem('orabbit_alert_webhooks') || '{}');
+  let schedules = [];
+  try {
+    const raw = localStorage.getItem('orabbit_cron_schedules');
+    if (raw) schedules = JSON.parse(raw);
+  } catch {}
+
+  let alerts = {};
+  try {
+    const raw = localStorage.getItem('orabbit_alert_webhooks');
+    if (raw) alerts = JSON.parse(raw);
+  } catch {}
 
   const configJson = exportClusterConfigToYaml(jobs, connections, schedules, alerts);
 

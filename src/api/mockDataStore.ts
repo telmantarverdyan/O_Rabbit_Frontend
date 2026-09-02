@@ -187,6 +187,7 @@ const SEED_WORKERS: Worker[] = [
   {
     id: 'node-pull-worker-01',
     addr: '10.0.4.11:9091',
+    status: 'ONLINE',
     last_heartbeat: new Date(Date.now() - 3000).toISOString(),
     active_tasks: 3,
     capabilities_json: {
@@ -202,6 +203,7 @@ const SEED_WORKERS: Worker[] = [
   {
     id: 'node-pull-worker-02',
     addr: '10.0.4.12:9091',
+    status: 'ONLINE',
     last_heartbeat: new Date(Date.now() - 2000).toISOString(),
     active_tasks: 4,
     capabilities_json: {
@@ -217,6 +219,7 @@ const SEED_WORKERS: Worker[] = [
   {
     id: 'node-pull-worker-03',
     addr: '10.0.4.13:9091',
+    status: 'ONLINE',
     last_heartbeat: new Date(Date.now() - 4000).toISOString(),
     active_tasks: 2,
     capabilities_json: {
@@ -232,6 +235,7 @@ const SEED_WORKERS: Worker[] = [
   {
     id: 'node-pull-worker-04',
     addr: '10.0.4.14:9091',
+    status: 'ONLINE',
     last_heartbeat: new Date(Date.now() - 6000).toISOString(),
     active_tasks: 0,
     capabilities_json: {
@@ -529,7 +533,7 @@ class MockDataStore {
       git_commit: 'e89d12a',
       uptime_seconds: 412500,
       active_runs: this.state.runs.filter((r) => r.status === 'RUNNING').length,
-      active_workers: this.state.workers.filter((w) => w.status === 'ONLINE').length,
+      active_workers: this.state.workers.filter((w) => w.status === 'ONLINE' || (!w.status && (Date.now() - new Date(w.last_heartbeat).getTime() < 30000))).length,
       total_rows_extracted: totalRows,
       total_bytes_written: totalBytes,
       leadership: {

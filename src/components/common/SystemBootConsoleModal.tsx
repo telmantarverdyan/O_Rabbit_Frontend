@@ -42,7 +42,7 @@ export const SystemBootConsoleModal: React.FC<SystemBootConsoleModalProps> = ({
     refetchWorkers();
   };
 
-  const isHealthy = health?.status === 'healthy' || true;
+  const isHealthy = health?.status === 'healthy' || status?.status === 'HEALTHY';
 
   return (
     <Modal

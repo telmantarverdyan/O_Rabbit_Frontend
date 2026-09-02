@@ -240,7 +240,7 @@ export const RunDetail: React.FC = () => {
     );
   }
 
-  let allParquetObjects: ParquetObject[] = run?.objects || [];
+  let allParquetObjects: ParquetObject[] = [...(run?.objects || [])];
   if (allParquetObjects.length === 0 && run) {
     tasks.forEach((t) => {
       if (t.parquet_objects_json) {
@@ -277,7 +277,9 @@ export const RunDetail: React.FC = () => {
   let durationStr = '—';
   if (run.created_at) {
     const start = new Date(run.started_at || run.created_at).getTime();
-    const end = run.finished_at ? new Date(run.finished_at).getTime() : Date.now();
+    const isFinished = run.status === 'SUCCEEDED' || run.status === 'FAILED' || run.status === 'CANCELED';
+    const finishTime = run.finished_at || (isFinished ? run.updated_at : undefined);
+    const end = finishTime ? new Date(finishTime).getTime() : Date.now();
     if (!isNaN(start) && !isNaN(end)) {
       const sec = Math.max(0, Math.floor((end - start) / 1000));
       const mins = Math.floor(sec / 60);

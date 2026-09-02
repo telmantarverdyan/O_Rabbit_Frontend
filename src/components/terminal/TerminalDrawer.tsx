@@ -327,6 +327,9 @@ export const TerminalDrawer: React.FC<TerminalDrawerProps> = ({ isOpen, onClose 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleCommand(inputVal);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (history.length > 0) {

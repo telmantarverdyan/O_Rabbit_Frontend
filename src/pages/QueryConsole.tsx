@@ -100,6 +100,8 @@ export const QueryConsole: React.FC = () => {
     totalRows: 6,
   });
 
+  const handleRunQueryRef = useRef<() => void>(() => {});
+
   const handleRunQuery = async () => {
     setIsRunning(true);
     terminalSound.playEnter();
@@ -166,6 +168,14 @@ export const QueryConsole: React.FC = () => {
     } finally {
       setIsRunning(false);
     }
+  };
+
+  handleRunQueryRef.current = handleRunQuery;
+
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      handleRunQueryRef.current();
+    });
   };
 
   const handleCopySQL = () => {
@@ -252,6 +262,7 @@ export const QueryConsole: React.FC = () => {
                 theme="vs-dark"
                 value={sqlQuery}
                 onChange={(val) => setSqlQuery(val || '')}
+                onMount={handleEditorMount}
                 options={{
                   fontSize: 12,
                   fontFamily: 'monospace',

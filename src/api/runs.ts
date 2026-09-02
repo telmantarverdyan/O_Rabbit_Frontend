@@ -88,9 +88,6 @@ export async function fetchRunById(id: string): Promise<Run> {
   const run = mockStore.getRun(id);
   if (run) return normalizeRun(run);
 
-  const runs = mockStore.getRuns();
-  if (runs.length > 0) return normalizeRun(runs[0]);
-
   throw new Error(`Run ${id} not found`);
 }
 

@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   const hasToken = !!getAuthToken();
-  const isHealthy = health?.status === 'healthy' || true;
+  const isHealthy = health?.status === 'healthy' || status?.status === 'HEALTHY';
 
   return (
     <header className="h-16 border-b border-surface-border bg-[#020504]/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between font-mono select-none">

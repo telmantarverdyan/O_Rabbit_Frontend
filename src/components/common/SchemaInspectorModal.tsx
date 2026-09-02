@@ -195,9 +195,9 @@ export const SchemaInspectorModal: React.FC<SchemaInspectorModalProps> = ({
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="text-emerald-600 border-b border-surface-border text-[10px] uppercase">
                     <tr>
-                      {selectedTable.columns.map((c) => (
-                        <th key={c.name} className="pb-1.5 px-2 font-semibold whitespace-nowrap">
-                          {c.name}
+                      {sampleColumns.map((colName) => (
+                        <th key={colName} className="pb-1.5 px-2 font-semibold whitespace-nowrap">
+                          {colName}
                         </th>
                       ))}
                     </tr>
