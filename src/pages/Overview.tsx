@@ -65,12 +65,11 @@ export const Overview: React.FC = () => {
   const catalogTotalRows = catalogList.reduce((acc, t) => acc + t.rowsEstimate, 0);
   const catalogTotalBytes = catalogList.reduce((acc, t) => acc + t.sizeBytes, 0);
 
-  const totalRows = runs.length > 0 
-    ? runs.reduce((acc, r) => acc + (r.rows_total || 0), 0)
-    : catalogTotalRows;
-  const totalBytes = runs.length > 0 
-    ? runs.reduce((acc, r) => acc + (r.bytes_total || 0), 0)
-    : catalogTotalBytes;
+  const calculatedRunsRows = runs.reduce((acc, r) => acc + (r.rows_total || 0), 0);
+  const calculatedRunsBytes = runs.reduce((acc, r) => acc + (r.bytes_total || 0), 0);
+
+  const totalRows = calculatedRunsRows > 0 ? calculatedRunsRows : catalogTotalRows;
+  const totalBytes = calculatedRunsBytes > 0 ? calculatedRunsBytes : catalogTotalBytes;
   const totalGB = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
 
   return (
@@ -88,7 +87,7 @@ export const Overview: React.FC = () => {
                 </h2>
               </div>
               <p className="text-xs text-emerald-500/80">
-                Distributed high-throughput database extraction $\rightarrow$ Apache Iceberg Lakehouse Engine.
+                Distributed high-throughput database extraction → Apache Iceberg Lakehouse Engine.
               </p>
             </div>
           </div>

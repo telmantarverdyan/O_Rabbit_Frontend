@@ -35,40 +35,50 @@ export const TaskProgressChart: React.FC<TaskProgressChartProps> = ({
         </span>
       </div>
 
-      <div className="h-56 w-full flex items-center justify-center">
+      <div className="relative h-56 w-full flex items-center justify-center">
         {total === 0 ? (
           <div className="text-center text-emerald-600 text-xs font-mono">
             [No active tasks planned]
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                innerRadius={55}
-                outerRadius={80}
-                paddingAngle={4}
-                dataKey="value"
-                stroke="#040907"
-                strokeWidth={3}
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#050c08',
-                  borderColor: '#10b981',
-                  borderRadius: '8px',
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
-                  color: '#a3e5c7',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={4}
+                  dataKey="value"
+                  stroke="#040907"
+                  strokeWidth={3}
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#050c08',
+                    borderColor: '#10b981',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
+                    color: '#a3e5c7',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-2xl font-bold font-mono text-emerald-300 tracking-tight glow-emerald">
+                {total.toLocaleString()}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-emerald-500/80 font-mono">
+                {total > 0 ? `${((succeeded / total) * 100).toFixed(0)}% OK` : 'TASKS'}
+              </span>
+            </div>
+          </>
         )}
       </div>
 

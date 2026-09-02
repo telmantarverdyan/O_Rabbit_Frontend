@@ -83,11 +83,14 @@ export interface Task {
   status: TaskStatus;
   partition_spec_json: TaskPartitionSpec;
   rows_read?: number;
+  rows_written?: number;
+  bytes_read?: number;
   bytes_written?: number;
   parquet_objects_json?: ParquetObject[] | string;
   failure_message?: string;
   created_at: string;
   updated_at: string;
+  [key: string]: any;
 }
 
 export interface Run {
