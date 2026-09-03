@@ -54,25 +54,45 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Backend health status badge */}
-        <button
-          onClick={() => setIsBootModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1 rounded-lg border border-surface-border hover:border-emerald-500/40 bg-terminal-dark/80 hover:bg-emerald-950/40 text-xs font-mono shadow-terminal-sm transition cursor-pointer group"
-          title="Click to view full System Boot Log & Probe Diagnostics"
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              isHealthy ? 'bg-emerald-400 shadow-[0_0_8px_#00ff66]' : 'bg-amber-400 animate-ping'
-            }`}
-          />
-          <span className="text-emerald-200 font-bold tracking-wider group-hover:text-[#00ff66]">
-            {isHealthy ? 'MASTER_ONLINE' : 'LINK_DISCONNECTED'}
-          </span>
-          {status && (
-            <span className="text-emerald-500/60 hidden lg:inline border-l border-emerald-900/60 pl-2">
-              PID:{status.pid} • {status.http_addr}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setIsBootModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1 rounded-lg border border-surface-border hover:border-emerald-500/40 bg-terminal-dark/80 hover:bg-emerald-950/40 text-xs font-mono shadow-terminal-sm transition cursor-pointer group"
+            title="Click to view full System Boot Log & Probe Diagnostics"
+          >
+            <span
+              className={`h-2 w-2 rounded-full transition-all ${
+                isHealthy
+                  ? 'bg-emerald-400 shadow-[0_0_8px_#00ff66]'
+                  : isFetching
+                  ? 'bg-amber-400 animate-ping'
+                  : 'bg-rose-500'
+              }`}
+            />
+            <span className="text-emerald-200 font-bold tracking-wider group-hover:text-[#00ff66]">
+              {isHealthy
+                ? 'MASTER_ONLINE'
+                : isFetching
+                ? 'RECONNECTING...'
+                : 'OFFLINE_MOCK'}
             </span>
+            {status && isHealthy && (
+              <span className="text-emerald-500/60 hidden lg:inline border-l border-emerald-900/60 pl-2">
+                PID:{status.pid} • {status.http_addr}
+              </span>
+            )}
+          </button>
+          {!isHealthy && (
+            <button
+              onClick={() => refetchStatus()}
+              disabled={isFetching}
+              className="p-1 rounded bg-amber-950/40 border border-amber-500/30 text-amber-300 hover:text-amber-100 hover:bg-amber-900/50 transition disabled:opacity-50"
+              title="Force reconnect to master backend"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            </button>
           )}
-        </button>
+        </div>
 
         {status?.leadership && (
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 text-xs font-mono">

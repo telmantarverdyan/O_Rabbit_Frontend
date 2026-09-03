@@ -33,8 +33,9 @@ Alternatively, you can configure the backend URL and Bearer Auth Token directly 
 
 ---
 
-## 🏗️ Production Build
+## 🏗️ Production Build & Container Deployment
 
+### Local Build
 To compile static assets for production:
 
 ```bash
@@ -42,6 +43,24 @@ npm run build
 ```
 
 Compiled files are placed in `dist/`.
+
+### 🐳 Docker & Docker Compose Deployment
+Run the production Nginx container locally or in your Kubernetes / Docker cluster:
+
+```bash
+# Using Docker Compose
+docker compose up -d
+
+# Or build & run directly
+docker build -t orabbit-admin-ui .
+docker run -d -p 3000:80 --name orabbit-ui orabbit-admin-ui
+```
+
+Check health status:
+```bash
+curl http://localhost:3000/healthz
+# Returns: OK
+```
 
 ---
 
