@@ -6,9 +6,11 @@ import { apiClient } from '@/api/client';
 import { ExplainPlanModal } from '@/components/query/ExplainPlanModal';
 import { terminalSound } from '@/utils/terminalSound';
 import { getTableDetails } from '@/utils/tableCatalog';
+import { executeQuery } from '@/utils/duckdb';
 import {
   Play,
   Download,
+  FileJson,
   Copy,
   Check,
   RotateCcw,
@@ -100,6 +102,7 @@ export const QueryConsole: React.FC = () => {
     totalRows: 6,
   });
 
+  const [activeEngine, setActiveEngine] = useState<string>('DuckDB-Wasm (Browser)');
   const handleRunQueryRef = useRef<() => void>(() => {});
 
   const handleRunQuery = async () => {
@@ -108,63 +111,53 @@ export const QueryConsole: React.FC = () => {
     const start = Date.now();
 
     try {
-      const data = await apiClient<QueryResult>('/api/query', {
-        method: 'POST',
-        body: JSON.stringify({ query: sqlQuery }),
-      });
+      let data: QueryResult;
+      let engineName = 'DuckDB-Wasm (Browser)';
+
+      try {
+        data = await apiClient<QueryResult>('/api/query', {
+          method: 'POST',
+          body: JSON.stringify({ query: sqlQuery }),
+        });
+        engineName = 'Master Backend';
+      } catch {
+        // Fall back to in-browser DuckDB-wasm engine
+        const duckResult = await executeQuery(sqlQuery);
+        data = {
+          columns: duckResult.columns,
+          rows: duckResult.rows,
+          executionTimeMs: duckResult.executionTimeMs,
+          totalRows: duckResult.totalRows,
+        };
+        engineName = duckResult.engine === 'duckdb-wasm' ? 'DuckDB-Wasm (Browser)' : 'Client In-Memory Engine';
+      }
 
       const duration = Date.now() - start;
       const res: QueryResult = {
         columns: data.columns || [],
         rows: data.rows || [],
-        executionTimeMs: duration,
+        executionTimeMs: data.executionTimeMs || duration,
         totalRows: (data.rows || []).length,
       };
       setResult(res);
+      setActiveEngine(engineName);
       terminalSound.playSuccess();
-      toast.success(`Executed in ${duration}ms (${res.totalRows} rows)`);
+      toast.success(`Executed via ${engineName} in ${res.executionTimeMs}ms (${res.totalRows} rows)`);
 
       setHistory((prev) => [
         {
           id: `hist-${Date.now()}`,
           sql: sqlQuery,
           timestamp: new Date().toISOString(),
-          durationMs: duration,
+          durationMs: res.executionTimeMs,
           rowsCount: res.totalRows,
           status: 'SUCCESS',
         },
         ...prev,
       ]);
-    } catch {
-      const duration = Date.now() - start + 25;
-      
-      // Parse table name from SQL query
-      const match = sqlQuery.match(/from\s+([a-zA-Z0-9_.'"-]+)/i) || 
-                    sqlQuery.match(/iceberg\([^,]+,\s*['"]?[^,'"]+['"]?,\s*['"]?([a-zA-Z0-9_]+)['"]?\)/i);
-      const rawTableName = match ? (match[1] || 'transactions').replace(/['"`]/g, '') : 'transactions';
-      const tableInfo = getTableDetails(rawTableName);
-
-      const fallbackResult: QueryResult = {
-        columns: tableInfo.columns.map((c) => c.name),
-        rows: tableInfo.sampleRows,
-        executionTimeMs: duration,
-        totalRows: tableInfo.sampleRows.length,
-      };
-      setResult(fallbackResult);
-      terminalSound.playSuccess();
-      toast.info(`Queried ${tableInfo.name} in ${duration}ms (${tableInfo.sampleRows.length} rows returned)`);
-
-      setHistory((prev) => [
-        {
-          id: `hist-${Date.now()}`,
-          sql: sqlQuery,
-          timestamp: new Date().toISOString(),
-          durationMs: duration,
-          rowsCount: fallbackResult.totalRows,
-          status: 'SUCCESS',
-        },
-        ...prev,
-      ]);
+    } catch (err: any) {
+      terminalSound.playError?.();
+      toast.error(err.message || 'Query execution failed');
     } finally {
       setIsRunning(false);
     }
@@ -200,6 +193,28 @@ export const QueryConsole: React.FC = () => {
     document.body.removeChild(link);
     terminalSound.playSuccess();
     toast.success('Downloaded CSV export');
+  };
+
+  const handleExportJSON = () => {
+    if (!result) return;
+    const objects = result.rows.map((row) => {
+      const obj: Record<string, any> = {};
+      result.columns.forEach((col, i) => {
+        obj[col] = row[i];
+      });
+      return obj;
+    });
+    const blob = new Blob([JSON.stringify(objects, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `query_result_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    terminalSound.playSuccess();
+    toast.success('Downloaded JSON export');
   };
 
   return (
@@ -348,7 +363,7 @@ export const QueryConsole: React.FC = () => {
       <div className="rounded-xl border border-surface-border bg-surface/90 backdrop-blur-md shadow-terminal-sm overflow-hidden space-y-0">
         {/* Results Header */}
         <div className="p-3.5 border-b border-surface-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-surface-darker">
-          <div className="flex items-center gap-4 text-xs font-mono">
+          <div className="flex items-center gap-3 text-xs font-mono">
             <span className="font-bold text-emerald-200">QUERY RESULT</span>
             {result && (
               <>
@@ -358,18 +373,31 @@ export const QueryConsole: React.FC = () => {
                 <span className="text-emerald-500 flex items-center gap-1">
                   <Clock className="h-3 w-3" /> {result.executionTimeMs} ms
                 </span>
+                <span className="text-cyan-400 bg-cyan-950/70 border border-cyan-500/30 px-2 py-0.5 rounded text-[10px] hidden sm:inline">
+                  {activeEngine}
+                </span>
               </>
             )}
           </div>
           {result && (
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Download}
-              onClick={handleExportCSV}
-            >
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={FileJson}
+                onClick={handleExportJSON}
+              >
+                JSON
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={Download}
+                onClick={handleExportCSV}
+              >
+                CSV
+              </Button>
+            </div>
           )}
         </div>
 
