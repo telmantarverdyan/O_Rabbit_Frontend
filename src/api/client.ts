@@ -29,6 +29,16 @@ export function setCustomBackendUrl(url: string): void {
   }
 }
 
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
 export async function apiClient<T = any>(
   path: string,
   options: RequestInit = {}
@@ -66,7 +76,7 @@ export async function apiClient<T = any>(
         }
       }
     } catch {}
-    throw new Error(`API Error [${response.status}]: ${errorDetail}`);
+    throw new ApiError(response.status, `API Error [${response.status}]: ${errorDetail}`);
   }
 
   if (response.status === 204) {

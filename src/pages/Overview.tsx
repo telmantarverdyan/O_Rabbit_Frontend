@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/common/Button';
 import { ThroughputChart } from '@/components/charts/ThroughputChart';
 import { TaskProgressChart } from '@/components/charts/TaskProgressChart';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClusterMesh } from '@/components/topology/ClusterMesh';
 import { RabbitLogo } from '@/components/branding/RabbitLogo';
 import { Link } from 'react-router-dom';
@@ -138,23 +139,27 @@ export const Overview: React.FC = () => {
       {/* Real-time Telemetry & Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <ThroughputChart
-            data={runs.slice(0, 7).reverse().map((r, i) => ({
-              time: `Run-${r?.id ? String(r.id).slice(0, 4) : i + 1}`,
-              rowsPerSec: (r.rows_total || 0) / 10 || 5000 * (i + 1),
-              mbPerSec: Number(((r.bytes_total || 0) / (1024 * 1024 * 10)).toFixed(1)) || 4.5 * (i + 1),
-            }))}
-            title="Cluster Ingestion Throughput Velocity"
-            metric="both"
-          />
+          <ErrorBoundary compact fallbackTitle="Throughput Velocity Chart">
+            <ThroughputChart
+              data={runs.slice(0, 7).reverse().map((r, i) => ({
+                time: `Run-${r?.id ? String(r.id).slice(0, 4) : i + 1}`,
+                rowsPerSec: (r.rows_total || 0) / 10 || 5000 * (i + 1),
+                mbPerSec: Number(((r.bytes_total || 0) / (1024 * 1024 * 10)).toFixed(1)) || 4.5 * (i + 1),
+              }))}
+              title="Cluster Ingestion Throughput Velocity"
+              metric="both"
+            />
+          </ErrorBoundary>
         </div>
         <div>
-          <TaskProgressChart
-            succeeded={succeededRuns.length}
-            running={activeRuns.length}
-            failed={failedRuns.length}
-            pending={runs.filter((r) => r.status === 'PLANNING').length}
-          />
+          <ErrorBoundary compact fallbackTitle="Task Progress Breakdown Chart">
+            <TaskProgressChart
+              succeeded={succeededRuns.length}
+              running={activeRuns.length}
+              failed={failedRuns.length}
+              pending={runs.filter((r) => r.status === 'PLANNING').length}
+            />
+          </ErrorBoundary>
         </div>
       </div>
 

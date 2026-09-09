@@ -9,6 +9,7 @@ import { MetricCard } from '@/components/common/MetricCard';
 import { ThroughputChart } from '@/components/charts/ThroughputChart';
 import { LogConsole } from '@/components/common/LogConsole';
 import { useToast } from '@/components/common/Toast';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { terminalSound } from '@/utils/terminalSound';
 import {
   ArrowLeft,
@@ -392,15 +393,17 @@ export const RunDetail: React.FC = () => {
       </div>
 
       {/* Run Telemetry Chart */}
-      <ThroughputChart
-        data={tasks.map((t, idx) => ({
-          time: `Task-${t.partition_spec_json?.output_part || idx + 1}`,
-          rowsPerSec: getTaskRows(t),
-          mbPerSec: Number((getTaskBytes(t) / (1024 * 1024)).toFixed(2)),
-        }))}
-        title="Partition Task Execution Velocity"
-        metric="both"
-      />
+      <ErrorBoundary compact fallbackTitle="Partition Task Velocity Chart">
+        <ThroughputChart
+          data={tasks.map((t, idx) => ({
+            time: `Task-${t.partition_spec_json?.output_part || idx + 1}`,
+            rowsPerSec: getTaskRows(t),
+            mbPerSec: Number((getTaskBytes(t) / (1024 * 1024)).toFixed(2)),
+          }))}
+          title="Partition Task Execution Velocity"
+          metric="both"
+        />
+      </ErrorBoundary>
 
       {/* Error Banner if Run Failed */}
       {run.error_message && (

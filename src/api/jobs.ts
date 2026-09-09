@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
 import { Job } from './types';
 import { mockStore } from './mockDataStore';
 
@@ -40,7 +40,8 @@ export async function createJob(payload: CreateJobPayload): Promise<Job> {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     return mockStore.addJob({
       source_connection_id: payload.source_connection_id,
       target_connection_id: payload.target_connection_id,
@@ -61,7 +62,8 @@ export async function updateJob(id: string, payload: Partial<CreateJobPayload>):
       method: 'PUT',
       body: JSON.stringify(payload),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     const job = mockStore.getJob(id);
     if (job) {
       Object.assign(job, payload);
@@ -76,6 +78,8 @@ export async function deleteJob(id: string): Promise<void> {
     await apiClient(`/jobs/${id}`, {
       method: 'DELETE',
     });
-  } catch {}
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+  }
   mockStore.deleteJob(id);
 }
