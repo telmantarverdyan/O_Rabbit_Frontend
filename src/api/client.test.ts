@@ -5,6 +5,7 @@ import {
   getCustomBackendUrl,
   setCustomBackendUrl,
   apiClient,
+  ApiError,
 } from './client';
 
 describe('api/client', () => {
@@ -138,6 +139,24 @@ describe('api/client', () => {
       } as Response);
 
       await expect(apiClient('/runs/999')).rejects.toThrow('API Error [404]: Run not found');
+    });
+
+    it('throws an instance of ApiError containing status code', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: async () => JSON.stringify({ message: 'Invalid token' }),
+      } as Response);
+
+      try {
+        await apiClient('/api/secure');
+        expect.fail('Should have thrown');
+      } catch (err: any) {
+        expect(err.name).toBe('ApiError');
+        expect(err.status).toBe(401);
+        expect(err.message).toContain('API Error [401]: Invalid token');
+      }
     });
   });
 });

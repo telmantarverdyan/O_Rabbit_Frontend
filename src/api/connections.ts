@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
 import { Connection } from './types';
 import { mockStore } from './mockDataStore';
 
@@ -35,7 +35,8 @@ export async function createConnection(payload: CreateConnectionPayload): Promis
       method: 'POST',
       body: JSON.stringify(payload),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     return mockStore.addConnection({
       name: payload.name,
       kind: payload.kind,
@@ -51,7 +52,8 @@ export async function updateConnection(id: string, payload: Partial<CreateConnec
       method: 'PUT',
       body: JSON.stringify(payload),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     const conn = mockStore.getConnection(id);
     if (conn) {
       Object.assign(conn, payload);
@@ -66,7 +68,9 @@ export async function deleteConnection(id: string): Promise<void> {
     await apiClient(`/connections/${id}`, {
       method: 'DELETE',
     });
-  } catch {}
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+  }
   mockStore.deleteConnection(id);
 }
 

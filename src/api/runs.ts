@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
 import { Run, Task } from './types';
 import { mockStore } from './mockDataStore';
 import { getTableDetails } from '@/utils/tableCatalog';
@@ -110,7 +110,8 @@ export async function submitJobRun(jobId: string, overrides: Record<string, any>
       method: 'POST',
       body: JSON.stringify(overrides),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     const job = mockStore.getJob(jobId);
     return mockStore.addRun({
       job_id: jobId,
@@ -128,7 +129,8 @@ export async function submitDirectRun(payload: SubmitRunPayload): Promise<Run> {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     return mockStore.addRun({
       job_id: payload.job_id || 'adhoc-run',
       target_table: payload.source_table || 'custom_export',
@@ -144,7 +146,8 @@ export async function cancelRun(id: string): Promise<{ success: boolean }> {
     return await apiClient<{ success: boolean }>(`/runs/${id}/cancel`, {
       method: 'POST',
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     mockStore.cancelRun(id);
     return { success: true };
   }
@@ -155,7 +158,8 @@ export async function retryTask(runId: string, taskId: string): Promise<{ succes
     return await apiClient<{ success: boolean; message: string }>(`/runs/${runId}/tasks/${taskId}/retry`, {
       method: 'POST',
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     mockStore.retryTask(runId, taskId);
     return { success: true, message: `Task ${taskId} re-queued for partition lease` };
   }
