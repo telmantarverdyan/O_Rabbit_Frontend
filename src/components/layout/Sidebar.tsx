@@ -4,36 +4,21 @@ import { RabbitLogo } from '@/components/branding/RabbitLogo';
 import {
   LayoutDashboard,
   PlayCircle,
+  PlusCircle,
   Briefcase,
   Database,
   Server,
-  Layers,
-  Settings,
-  Sparkles,
-  Terminal,
-  Network,
-  Clock,
-  Archive,
-  Bell,
   X,
-  Command,
-  Activity,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const navItems = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, tag: 'LIVE' },
-  { to: '/runs', label: 'Ingestion Runs', icon: PlayCircle, tag: 'CORE' },
-  { to: '/jobs', label: 'Export Jobs', icon: Briefcase },
-  { to: '/schedules', label: 'Cron Schedules', icon: Clock },
-  { to: '/lineage', label: 'Lineage & DAG', icon: Network },
+  { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/runs/new', label: 'New Run', icon: PlusCircle, tag: 'RUN' },
+  { to: '/runs', label: 'Runs', icon: PlayCircle },
+  { to: '/jobs', label: 'Jobs', icon: Briefcase },
   { to: '/connections', label: 'Connections', icon: Database },
-  { to: '/workers', label: 'Worker Fleet', icon: Server, tag: 'FLEET' },
-  { to: '/datasets', label: 'Lakehouse Tables', icon: Layers },
-  { to: '/query', label: 'SQL Console', icon: Terminal, tag: 'SQL' },
-  { to: '/maintenance', label: 'Compaction', icon: Archive },
-  { to: '/alerts', label: 'Alerts & Incidents', icon: Bell },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/workers', label: 'Workers', icon: Server },
 ];
 
 interface SidebarProps {
@@ -72,17 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onClose 
           </button>
         </div>
 
-        {/* Command shortcut hint */}
-        <div className="px-3 pt-3 pb-1">
-          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-900/40 text-[11px] text-emerald-400/80">
-            <span className="flex items-center gap-1.5">
-              <Command className="h-3 w-3 text-emerald-400" /> CLI Search
-            </span>
-            <kbd className="px-1.5 py-0.5 rounded bg-emerald-900/60 border border-emerald-700/40 text-[10px] text-emerald-300">
-              ⌘K
-            </kbd>
-          </div>
-        </div>
 
         {/* Nav links */}
         <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto">
@@ -92,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onClose 
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === '/'}
+                end={item.to === '/' || item.to === '/runs'}
                 onClick={() => onClose?.()}
                 className={({ isActive }) =>
                   clsx(
@@ -124,20 +98,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onClose 
           })}
         </nav>
 
-        {/* Terminal System Status Footprint */}
-        <div className="p-3.5 border-t border-surface-border bg-[#020504] text-[10px] text-emerald-500/70 font-mono space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-emerald-400/90 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#00ff66]" />
-              MASTER_NODE_OK
-            </span>
-            <span className="text-emerald-600">v1.0.0</span>
-          </div>
-          <div className="flex items-center justify-between text-emerald-600/80 text-[9px]">
-            <span>ENGINE: gRPC + S3</span>
-            <span className="text-emerald-500">ICEBERG</span>
-          </div>
-        </div>
       </aside>
     </>
   );

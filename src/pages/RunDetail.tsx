@@ -1,615 +1,367 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchRunById, cancelRun, retryTask } from '@/api/runs';
-import { useRunSSE } from '@/api/sse';
-import { StatusBadge } from '@/components/common/StatusBadge';
-import { Button } from '@/components/common/Button';
-import { MetricCard } from '@/components/common/MetricCard';
-import { ThroughputChart } from '@/components/charts/ThroughputChart';
-import { LogConsole } from '@/components/common/LogConsole';
-import { useToast } from '@/components/common/Toast';
-import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { terminalSound } from '@/utils/terminalSound';
+import React, { useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Database, FileText, LifeBuoy, RefreshCw, RotateCcw, Rows3, Stethoscope, XCircle } from 'lucide-react';
 import {
-  ArrowLeft,
-  StopCircle,
-  PlayCircle,
-  FileText,
-  Terminal,
-  Layers,
-  Database,
-  RefreshCw,
-  CheckCircle2,
-  Clock,
-  ShieldAlert,
-  Hash,
-  ExternalLink,
-  RotateCcw,
-} from 'lucide-react';
-import { Task, ParquetObject, RunEvent } from '@/api/types';
-import { getTableDetails } from '@/utils/tableCatalog';
+  cancelRegistration,
+  fetchRun,
+  fetchRunArtifacts,
+  fetchRunDiagnosis,
+  fetchRunProgress,
+  recoverRun,
+  retryRegistration,
+} from '@/api/runs';
+import { errorMessage } from '@/api/client';
+import { useRunSSE } from '@/api/sse';
+import { RecoveryAction, RunEvent } from '@/api/types';
+import { Button } from '@/components/common/Button';
+import { Input, Select } from '@/components/common/Input';
+import { LogConsole } from '@/components/common/LogConsole';
+import { MetricCard } from '@/components/common/MetricCard';
+import { Modal } from '@/components/common/Modal';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { PageTitle, Panel, QueryState, TextArea, tableClass, tdClass, thClass } from '@/components/common/QueryState';
+import { useToast } from '@/components/common/Toast';
+import { TaskProgressChart } from '@/components/charts/TaskProgressChart';
+import { ACTIVE_RUN_STATUSES, formatBytes, formatDuration, formatNumber, formatTime, shortId } from '@/utils/format';
+import { useCancelRun } from './Runs';
+
+const RECOVERY_ACTIONS: Array<{ label: string; value: RecoveryAction }> = [
+  { label: 'reconcile_commit: re-check a stuck COMMITTING run', value: 'reconcile_commit' },
+  { label: 'registration_retry: retry Iceberg registration', value: 'registration_retry' },
+  { label: 'reconciliation_retry: retry commit reconciliation', value: 'reconciliation_retry' },
+];
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="min-w-0">
+    <dt className="text-[10px] uppercase tracking-wider text-emerald-500/70">{label}</dt>
+    <dd className="truncate text-xs text-emerald-100" title={typeof children === 'string' ? children : undefined}>{children || '—'}</dd>
+  </div>
+);
 
 export const RunDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const queryClient = useQueryClient();
+  const { id = '' } = useParams<{ id: string }>();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<'tasks' | 'objects' | 'logs' | 'manifest'>('tasks');
-  const [retryingTaskId, setRetryingTaskId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const cancel = useCancelRun();
+  const [recoverOpen, setRecoverOpen] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
 
-  const { data: run, isLoading, isFetching, refetch } = useQuery({
+  const runQuery = useQuery({
     queryKey: ['run', id],
-    queryFn: () => fetchRunById(id!),
-    enabled: !!id,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'RUNNING' || status === 'PLANNING' || status === 'COMMITTING' ? 2000 : 10000;
-    },
+    queryFn: () => fetchRun(id),
+    // Poll while the run is moving; stop once it is final.
+    refetchInterval: (q) => (q.state.data && !ACTIVE_RUN_STATUSES.has(q.state.data.run.status) ? false : 3000),
   });
+  const run = runQuery.data?.run;
+  const tasks = runQuery.data?.tasks ?? [];
+  const active = !!run && ACTIVE_RUN_STATUSES.has(run.status);
 
-  const { events: liveSseEvents, connected } = useRunSSE(id);
+  const progressQuery = useQuery({
+    queryKey: ['run', id, 'progress'],
+    queryFn: () => fetchRunProgress(id),
+    refetchInterval: active ? 3000 : false,
+    enabled: !!run,
+  });
+  const diagnosisQuery = useQuery({ queryKey: ['run', id, 'diagnosis'], queryFn: () => fetchRunDiagnosis(id), enabled: !!run });
+  const artifactsQuery = useQuery({ queryKey: ['run', id, 'artifacts'], queryFn: () => fetchRunArtifacts(id), enabled: !!run && !active });
 
-  const cancelMutation = useMutation({
-    mutationFn: () => cancelRun(id!),
+  const sse = useRunSSE(id);
+  // The master replays stored events on every (re)connect, so keep one copy per event ID.
+  const events = useMemo(() => {
+    const byId = new Map<string, RunEvent>();
+    for (const e of sse.events) byId.set(e.id, e);
+    return [...byId.values()].sort((a, b) => a.ts.localeCompare(b.ts));
+  }, [sse.events]);
+
+  const refreshAll = () => queryClient.invalidateQueries({ queryKey: ['run', id] });
+
+  const cancelRegistrationMutation = useMutation({
+    mutationFn: () => cancelRegistration(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['run', id] });
-      queryClient.invalidateQueries({ queryKey: ['runs'] });
+      toast.success('Iceberg registration canceled.');
+      refreshAll();
     },
+    onError: (err) => toast.error(errorMessage(err), 'Cancel registration failed'),
   });
 
-  const retryTaskMutation = useMutation({
-    mutationFn: async (taskId: string) => {
-      setRetryingTaskId(taskId);
-      return await retryTask(id!, taskId);
-    },
-    onSuccess: (res) => {
-      setRetryingTaskId(null);
-      terminalSound.playSuccess();
-      toast.success(res.message || 'Task re-queued successfully');
-      queryClient.invalidateQueries({ queryKey: ['run', id] });
-    },
-    onError: () => {
-      setRetryingTaskId(null);
-      terminalSound.playError();
-      toast.error('Failed to retry task');
-    },
-  });
-
-  const tasks = run?.tasks || [];
-  const succeededTasks = tasks.filter((t) => t.status === 'SUCCEEDED');
-  const runningTasks = tasks.filter((t) => t.status === 'RUNNING');
-  const failedTasks = tasks.filter((t) => t.status === 'FAILED');
-
-  // Full synthesized chronological execution log stream
-  const fullLogEvents: RunEvent[] = useMemo(() => {
-    const list: RunEvent[] = [];
-    if (!run) return liveSseEvents;
-
-    const runIdStr = String(run.id || id || '');
-    const shortId = runIdStr.length >= 8 ? runIdStr.slice(0, 8) : runIdStr || 'N/A';
-    const baseTs = new Date(run.created_at || Date.now()).getTime();
-
-    list.push({
-      id: `evt-reg-${runIdStr}`,
-      run_id: runIdStr,
-      ts: new Date(baseTs).toISOString(),
-      level: 'INFO',
-      message: `[ORABBIT_INIT] Run #${shortId} registered. Target dataset: ${run.dataset_key || 'default/dataset'}. Strategy: ${run.incremental ? 'INCREMENTAL_HWM' : 'FULL_SNAPSHOT'}.`,
-    });
-
-    if (run.started_at) {
-      list.push({
-        id: `evt-plan-${runIdStr}`,
-        run_id: runIdStr,
-        ts: new Date(run.started_at).toISOString(),
-        level: 'INFO',
-        message: `[MASTER_PLANNER] Acquired control plane epoch lock. Computed partition bounds: ${tasks.length} task partition(s) sliced.`,
-      });
-    }
-
-    tasks.forEach((t, idx) => {
-      const tId = String(t.id || idx);
-      const partNum = t.partition_spec_json?.output_part ?? idx;
-      const lower = t.partition_spec_json?.lower_bound ?? '0';
-      const upper = t.partition_spec_json?.upper_bound ?? 'MAX';
-      const taskStartTs = t.created_at
-        ? new Date(t.created_at).getTime()
-        : baseTs + 400 * (idx + 1);
-
-      list.push({
-        id: `evt-task-lease-${tId}`,
-        run_id: runIdStr,
-        task_id: tId,
-        ts: new Date(taskStartTs).toISOString(),
-        level: 'INFO',
-        message: `[WORKER_LEASE] Partition #${partNum} acquired by worker ${t.worker_id || 'pull-worker-' + ((idx % 2) + 1)}. Boundary: [${lower} .. ${upper}].`,
-      });
-
-      if (t.status === 'RUNNING') {
-        list.push({
-          id: `evt-task-run-${tId}`,
-          run_id: runIdStr,
-          task_id: tId,
-          ts: new Date(taskStartTs + 1000).toISOString(),
-          level: 'INFO',
-          message: `[EXTRACTION_STREAM] Worker ${t.worker_id || 'pull-worker'} streaming Arrow record batches -> Parquet ZSTD buffer.`,
-        });
-      }
-
-      if (t.status === 'SUCCEEDED') {
-        const finishTs = t.updated_at
-          ? new Date(t.updated_at).getTime()
-          : taskStartTs + 2200;
-        list.push({
-          id: `evt-task-succ-${tId}`,
-          run_id: runIdStr,
-          task_id: tId,
-          ts: new Date(finishTs).toISOString(),
-          level: 'INFO',
-          message: `[PARTITION_COMMIT] Partition #${partNum} completed. Read ${(t.rows_read || 0).toLocaleString()} rows (${(((t.bytes_written || 0) / 1024 / 1024)).toFixed(2)} MB Parquet).`,
-        });
-      }
-
-      if (t.status === 'FAILED') {
-        const finishTs = t.updated_at
-          ? new Date(t.updated_at).getTime()
-          : taskStartTs + 1800;
-        list.push({
-          id: `evt-task-fail-${tId}`,
-          run_id: runIdStr,
-          task_id: tId,
-          ts: new Date(finishTs).toISOString(),
-          level: 'ERROR',
-          message: `[PARTITION_ERROR] Partition #${partNum} failed on ${t.worker_id || 'node'}: ${t.failure_message || 'Socket timeout or memory constraint'}.`,
-        });
-      }
-    });
-
-    if (run.status === 'COMMITTING' || run.status === 'SUCCEEDED') {
-      const commitTs = run.finished_at
-        ? new Date(new Date(run.finished_at).getTime() - 600).toISOString()
-        : new Date().toISOString();
-      list.push({
-        id: `evt-hwm-commit-${runIdStr}`,
-        run_id: runIdStr,
-        ts: commitTs,
-        level: 'INFO',
-        message: `[STATE_CHECKPOINT] 2PC transaction: committed _state.json (High-Water Mark checkpoint) and _commits/run-${shortId}.json.`,
-      });
-
-      list.push({
-        id: `evt-iceberg-commit-${runIdStr}`,
-        run_id: runIdStr,
-        ts: commitTs,
-        level: 'INFO',
-        message: `[ICEBERG_CATALOG] Registered snapshot manifest to Iceberg REST Catalog (_ice_state.json). Altinity Ice zero-copy queries enabled.`,
-      });
-    }
-
-    if (run.status === 'SUCCEEDED') {
-      list.push({
-        id: `evt-run-succ-${runIdStr}`,
-        run_id: runIdStr,
-        ts: new Date(run.finished_at || Date.now()).toISOString(),
-        level: 'INFO',
-        message: `[RUN_FINISHED] Ingestion run succeeded! Total: ${(run.rows_total || 0).toLocaleString()} rows written, ${(((run.bytes_total || 0) / 1024 / 1024)).toFixed(2)} MB Parquet committed.`,
-      });
-    }
-
-    if (run.status === 'FAILED') {
-      list.push({
-        id: `evt-run-err-${runIdStr}`,
-        run_id: runIdStr,
-        ts: new Date(run.finished_at || Date.now()).toISOString(),
-        level: 'ERROR',
-        message: `[RUN_ABORTED] Ingestion run failed: ${run.error_message || 'One or more partition tasks failed'}.`,
-      });
-    }
-
-    // Merge with any real SSE live streaming events
-    if (liveSseEvents.length > 0) {
-      const seen = new Set(list.map((e) => e.message));
-      liveSseEvents.forEach((se) => {
-        if (!seen.has(se.message)) {
-          list.push(se);
-          seen.add(se.message);
-        }
-      });
-    }
-
-    return list.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
-  }, [run, tasks, liveSseEvents, id]);
-
-  if (isLoading) {
-    return (
-      <div className="py-20 text-center text-emerald-600 font-mono text-xs">
-        [Fetching execution manifest for {id}...]
-      </div>
-    );
-  }
-
-  if (!run) {
-    return (
-      <div className="py-20 text-center text-emerald-500/80 space-y-3 font-mono">
-        <p>[Run {id} not found in control plane database]</p>
-        <Link to="/runs">
-          <Button variant="secondary" icon={ArrowLeft}>
-            Back to Runs
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  let allParquetObjects: ParquetObject[] = [...(run?.objects || [])];
-  if (allParquetObjects.length === 0 && run) {
-    tasks.forEach((t) => {
-      if (t.parquet_objects_json) {
-        if (Array.isArray(t.parquet_objects_json)) {
-          allParquetObjects.push(...t.parquet_objects_json);
-        } else if (typeof t.parquet_objects_json === 'string') {
-          try {
-            const parsed = JSON.parse(t.parquet_objects_json);
-            if (Array.isArray(parsed)) allParquetObjects.push(...parsed);
-          } catch {}
-        }
-      }
-    });
-  }
-
-  const taskSumRows = tasks.reduce((sum, t) => sum + (t.rows_read || 0), 0);
-  const realTotalRows = (run.rows_total !== undefined && run.rows_total !== null && run.rows_total > 0)
-    ? run.rows_total
-    : taskSumRows;
-
-  const taskSumBytes = tasks.reduce((sum, t) => sum + (t.bytes_written || 0), 0);
-  const realTotalBytes = (run.bytes_total !== undefined && run.bytes_total !== null && run.bytes_total > 0)
-    ? run.bytes_total
-    : taskSumBytes;
-
-  const sizeSubtitle = realTotalBytes > 0
-    ? (realTotalBytes >= 1024 * 1024
-        ? `${(realTotalBytes / (1024 * 1024)).toFixed(2)} MB uploaded to S3`
-        : `${(realTotalBytes / 1024).toFixed(1)} KB uploaded to S3`)
-    : '0 B uploaded to S3';
-
-  const isCancellable = run.status === 'RUNNING' || run.status === 'PLANNING' || run.status === 'COMMITTING';
-
-  let durationStr = '—';
-  if (run.created_at) {
-    const start = new Date(run.started_at || run.created_at).getTime();
-    const isFinished = run.status === 'SUCCEEDED' || run.status === 'FAILED' || run.status === 'CANCELED';
-    const finishTime = run.finished_at || (isFinished ? run.updated_at : undefined);
-    const end = finishTime ? new Date(finishTime).getTime() : Date.now();
-    if (!isNaN(start) && !isNaN(end)) {
-      const sec = Math.max(0, Math.floor((end - start) / 1000));
-      const mins = Math.floor(sec / 60);
-      const remainingSec = sec % 60;
-      durationStr = mins > 0 ? `${mins}m ${remainingSec}s` : `${sec}s`;
-    }
-  }
-
-  const createdDate = run.created_at ? new Date(run.created_at) : new Date();
-  const formattedStartTime = !isNaN(createdDate.getTime()) ? createdDate.toLocaleTimeString() : 'Just now';
-
-  const getTaskRows = (t: Task) => t.rows_read || 0;
-  const getTaskBytes = (t: Task) => t.bytes_written || 0;
+  const p = progressQuery.data?.progress;
 
   return (
-    <div className="space-y-6 font-mono">
-      {/* Back Button & Top Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/runs"
-            className="p-2 rounded-lg bg-surface-darker border border-surface-border text-emerald-400 hover:text-emerald-200 hover:border-emerald-500/40 transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-emerald-100 font-mono tracking-tight glow-emerald">
-                RUN-{String(run.id || '').slice(0, 16)}
-              </h2>
-              <StatusBadge status={run.status} size="md" />
+    <div className="space-y-6">
+      <Link to="/runs" className="inline-flex items-center gap-1 text-xs text-emerald-500 hover:text-emerald-300">
+        <ArrowLeft className="h-3.5 w-3.5" /> All runs
+      </Link>
+
+      <QueryState isLoading={runQuery.isLoading} error={runQuery.error} onRetry={() => runQuery.refetch()}>
+        {run && (
+          <>
+            <PageTitle
+              title={`Run ${shortId(run.id)}`}
+              subtitle={run.id}
+              actions={
+                <>
+                  <StatusBadge status={run.status} size="lg" />
+                  <Button variant="ghost" size="sm" icon={RefreshCw} onClick={refreshAll}>Refresh</Button>
+                  {active && run.status !== 'COMMITTING' && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon={XCircle}
+                      loading={cancel.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Cancel run ${run.id}?`)) cancel.mutate(run.id);
+                      }}
+                    >
+                      Cancel run
+                    </Button>
+                  )}
+                  <Button variant="secondary" size="sm" icon={LifeBuoy} onClick={() => setRecoverOpen(true)}>Recover</Button>
+                </>
+              }
+            />
+
+            {run.error_summary && (
+              <div role="alert" className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-xs text-rose-300">
+                <p className="font-semibold">
+                  {run.failure_phase ? `Failed during ${run.failure_phase}` : 'Error'}
+                  {run.failure_class ? ` · ${run.failure_class}` : ''}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap break-words">{run.error_summary}</p>
+              </div>
+            )}
+            {run.operator_action_required && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-950/30 p-4 text-xs text-amber-300">
+                This run needs an operator. See the diagnosis below for the suggested action.
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <MetricCard title="Tasks" value={p ? `${p.tasks_succeeded}/${p.tasks_total}` : `${tasks.length}`} subtitle={p ? `${p.tasks_running} running · ${p.tasks_failed} failed` : undefined} icon={Rows3} />
+              <MetricCard title="Rows read" value={formatNumber(p?.rows_read ?? tasks.reduce((s, t) => s + t.rows_read, 0))} icon={Database} color="cyan" />
+              <MetricCard title="Written" value={formatBytes(p?.bytes_written ?? tasks.reduce((s, t) => s + t.bytes_written, 0))} icon={FileText} color="purple" />
+              <MetricCard title="Duration" value={formatDuration(run.started_at, run.finished_at)} subtitle={p ? `${p.workers_active} active workers` : undefined} icon={RotateCcw} color="amber" />
             </div>
-            <p className="text-xs text-emerald-500/80 font-mono mt-0.5">
-              Dataset: <span className="text-emerald-300 font-semibold">{run.dataset_key || '—'}</span>
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            icon={RefreshCw}
-            size="sm"
-            onClick={() => refetch()}
-            loading={isFetching}
-          >
-            Refresh
-          </Button>
-
-          <Link to="/datasets">
-            <Button variant="secondary" icon={Layers} size="sm">
-              View Datasets
-            </Button>
-          </Link>
-
-          <Link to="/query">
-            <Button variant="secondary" icon={ExternalLink} size="sm">
-              Query SQL
-            </Button>
-          </Link>
-
-          {isCancellable && (
-            <Button
-              variant="danger"
-              icon={StopCircle}
-              size="sm"
-              loading={cancelMutation.isPending}
-              onClick={() => {
-                if (window.confirm('Are you sure you want to cancel this ingestion run?')) {
-                  cancelMutation.mutate();
-                }
-              }}
-            >
-              Cancel Run
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title="Tasks Completed"
-          value={`${succeededTasks.length} / ${tasks.length}`}
-          subtitle={`${runningTasks.length} running, ${failedTasks.length} failed`}
-          icon={CheckCircle2}
-          color="emerald"
-        />
-        <MetricCard
-          title="Total Rows Read"
-          value={realTotalRows.toLocaleString()}
-          subtitle="Extracted from source database"
-          icon={Database}
-          color="cyan"
-        />
-        <MetricCard
-          title="Parquet Artifacts"
-          value={allParquetObjects.length}
-          subtitle={sizeSubtitle}
-          icon={Layers}
-          color="purple"
-        />
-        <MetricCard
-          title="Elapsed Duration"
-          value={durationStr}
-          subtitle={`Started ${formattedStartTime}`}
-          icon={Clock}
-          color="amber"
-        />
-      </div>
-
-      {/* Run Telemetry Chart */}
-      <ErrorBoundary compact fallbackTitle="Partition Task Velocity Chart">
-        <ThroughputChart
-          data={tasks.map((t, idx) => ({
-            time: `Task-${t.partition_spec_json?.output_part || idx + 1}`,
-            rowsPerSec: getTaskRows(t),
-            mbPerSec: Number((getTaskBytes(t) / (1024 * 1024)).toFixed(2)),
-          }))}
-          title="Partition Task Execution Velocity"
-          metric="both"
-        />
-      </ErrorBoundary>
-
-      {/* Error Banner if Run Failed */}
-      {run.error_message && (
-        <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-600/40 text-rose-300 text-xs font-mono space-y-1">
-          <div className="flex items-center gap-2 font-semibold text-rose-400">
-            <ShieldAlert className="h-4 w-4" />
-            <span>[CRITICAL EXECUTION ERROR]</span>
-          </div>
-          <p className="text-rose-200">{run.error_message}</p>
-        </div>
-      )}
-
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-surface-border space-x-6 text-xs font-mono">
-        <button
-          onClick={() => setActiveTab('tasks')}
-          className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
-            activeTab === 'tasks'
-              ? 'border-emerald-400 text-emerald-300'
-              : 'border-transparent text-emerald-600 hover:text-emerald-400'
-          }`}
-        >
-          <Layers className="h-3.5 w-3.5" />
-          <span>[Partition Tasks ({tasks.length})]</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('objects')}
-          className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
-            activeTab === 'objects'
-              ? 'border-emerald-400 text-emerald-300'
-              : 'border-transparent text-emerald-600 hover:text-emerald-400'
-          }`}
-        >
-          <FileText className="h-3.5 w-3.5" />
-          <span>[Committed Objects ({allParquetObjects.length})]</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('logs')}
-          className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
-            activeTab === 'logs'
-              ? 'border-emerald-400 text-emerald-300'
-              : 'border-transparent text-emerald-600 hover:text-emerald-400'
-          }`}
-        >
-          <Terminal className="h-3.5 w-3.5" />
-          <span>[Execution Logs ({fullLogEvents.length})]</span>
-          {connected && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('manifest')}
-          className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
-            activeTab === 'manifest'
-              ? 'border-emerald-400 text-emerald-300'
-              : 'border-transparent text-emerald-600 hover:text-emerald-400'
-          }`}
-        >
-          <Hash className="h-3.5 w-3.5" />
-          <span>[JSON Spec]</span>
-        </button>
-      </div>
-
-      {/* Tab 1: Partition Tasks Breakdown */}
-      {activeTab === 'tasks' && (
-        <div className="rounded-xl border border-surface-border bg-surface/90 overflow-hidden shadow-terminal-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead>
-                <tr className="border-b border-surface-border bg-surface-darker text-emerald-600 text-[10px] uppercase">
-                  <th className="py-3 px-4 font-semibold">Task ID</th>
-                  <th className="py-3 px-4 font-semibold">Status</th>
-                  <th className="py-3 px-4 font-semibold">Partition Range Bounds</th>
-                  <th className="py-3 px-4 font-semibold">Worker Node</th>
-                  <th className="py-3 px-4 font-semibold">Rows Read</th>
-                  <th className="py-3 px-4 font-semibold">Bytes Written</th>
-                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-950/40 text-emerald-200">
-                {tasks.map((task, idx) => {
-                  const spec = task.partition_spec_json || {};
-                  let rangeStr = 'Full table scan (single cursor)';
-                  if (spec.lower_bound !== undefined || spec.upper_bound !== undefined) {
-                    rangeStr = `[${spec.lower_bound ?? 'MIN'} .. ${spec.upper_bound ?? 'MAX'}]`;
-                  }
-                  const tId = String(task.id || idx);
-                  return (
-                    <tr key={tId} className="hover:bg-emerald-950/20 transition">
-                      <td className="py-3 px-4 font-semibold text-emerald-300">
-                        task-{tId.slice(0, 8)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <StatusBadge status={task.status} size="sm" />
-                      </td>
-                      <td className="py-3 px-4 text-emerald-400 font-mono text-xs">
-                        {rangeStr}
-                      </td>
-                      <td className="py-3 px-4 text-emerald-500/80 truncate max-w-[150px]">
-                        {task.worker_id ? `worker-${String(task.worker_id).slice(0, 6)}` : 'unassigned'}
-                      </td>
-                      <td className="py-3 px-4 text-emerald-200 font-semibold">
-                        {getTaskRows(task).toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4 text-cyan-400">
-                        {getTaskBytes(task) > 0
-                          ? `${(getTaskBytes(task) / 1024).toFixed(1)} KB`
-                          : '0 KB'}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {(task.status === 'FAILED' || task.status === 'QUARANTINED') ? (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={RotateCcw}
-                            className="text-amber-400 hover:text-amber-300 hover:bg-amber-950/40"
-                            loading={retryingTaskId === task.id}
-                            onClick={() => retryTaskMutation.mutate(task.id)}
-                          >
-                            Retry Task
-                          </Button>
-                        ) : (
-                          <span className="text-[10px] text-emerald-700 font-mono">
-                            {task.status === 'SUCCEEDED' ? '✓ Verified' : '—'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {tasks.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-emerald-700 font-mono">
-                      [No partition tasks planned yet]
-                    </td>
-                  </tr>
+            <div className="grid gap-6 lg:grid-cols-3">
+              <Panel title="Details" className="lg:col-span-2">
+                <dl className="grid gap-4 sm:grid-cols-3">
+                  <Field label="Job">{run.job_id}</Field>
+                  <Field label="Dataset">{run.dataset_key}</Field>
+                  <Field label="Correlation ID">{run.correlation_id}</Field>
+                  <Field label="Started">{formatTime(run.started_at)}</Field>
+                  <Field label="Finished">{formatTime(run.finished_at)}</Field>
+                  <Field label="Readiness">{run.readiness}</Field>
+                  <Field label="Data status">{run.data_status}</Field>
+                  <Field label="Catalog status">{run.catalog_status}</Field>
+                  <Field label="Commit phase">{run.commit_phase}</Field>
+                  <Field label="Registration attempts">{String(run.registration_attempt ?? 0)}</Field>
+                  <Field label="Registration error">{run.registration_error_class}</Field>
+                  <Field label="Snapshot / metadata">{run.registered_snapshot_or_metadata_id}</Field>
+                </dl>
+                {(run.type_warnings?.length ?? 0) > 0 && (
+                  <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-[11px] text-amber-300">
+                    <p className="font-semibold">Type warnings</p>
+                    <ul className="mt-1 list-disc pl-4">
+                      {run.type_warnings!.map((w, i) => (
+                        <li key={i}>{w.column ? `${w.column}: ` : ''}{w.message ?? JSON.stringify(w)}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" icon={RotateCcw} onClick={() => setRegistrationOpen(true)}>Retry Iceberg registration</Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={XCircle}
+                    loading={cancelRegistrationMutation.isPending}
+                    onClick={() => {
+                      if (window.confirm('Cancel the Iceberg registration for this run?')) cancelRegistrationMutation.mutate();
+                    }}
+                  >
+                    Cancel registration
+                  </Button>
+                </div>
+              </Panel>
 
-      {/* Tab 2: Committed Parquet Objects */}
-      {activeTab === 'objects' && (
-        <div className="rounded-xl border border-surface-border bg-surface/90 overflow-hidden shadow-terminal-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead>
-                <tr className="border-b border-surface-border bg-surface-darker text-emerald-600 text-[10px] uppercase">
-                  <th className="py-3 px-4 font-semibold">Object Key (S3 MinIO)</th>
-                  <th className="py-3 px-4 font-semibold">Rows</th>
-                  <th className="py-3 px-4 font-semibold">File Size</th>
-                  <th className="py-3 px-4 font-semibold">SHA-256 Digest</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-950/40 text-emerald-200">
-                {allParquetObjects.map((obj, idx) => (
-                  <tr key={idx} className="hover:bg-emerald-950/20 transition">
-                    <td className="py-3 px-4 text-emerald-200 font-semibold flex items-center gap-2">
-                      <FileText className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
-                      <span className="truncate max-w-md font-mono" title={obj.object_key}>
-                        {obj.object_key}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-emerald-300">
-                      {obj.row_count ? obj.row_count.toLocaleString() : '—'}
-                    </td>
-                    <td className="py-3 px-4 text-cyan-400 font-semibold">
-                      {obj.byte_size
-                        ? `${(obj.byte_size / (1024 * 1024)).toFixed(2)} MB`
-                        : '—'}
-                    </td>
-                    <td className="py-3 px-4 text-emerald-700 truncate max-w-[180px]" title={obj.sha256}>
-                      {obj.sha256 ? `${String(obj.sha256).slice(0, 16)}...` : 'Verified'}
-                    </td>
-                  </tr>
-                ))}
-                {allParquetObjects.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-10 text-center text-emerald-700 font-mono">
-                      [No Parquet files committed yet. Files appear upon successful task completion]
-                    </td>
-                  </tr>
+              <Panel title="Task progress">
+                {p ? (
+                  <TaskProgressChart succeeded={p.tasks_succeeded} running={p.tasks_running} failed={p.tasks_failed} pending={p.tasks_pending} />
+                ) : (
+                  <QueryState isLoading={progressQuery.isLoading} error={progressQuery.error}>{null}</QueryState>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </Panel>
+            </div>
 
-      {/* Tab 3: Live SSE & Full Event Stream Console */}
-      {activeTab === 'logs' && (
-        <LogConsole events={fullLogEvents} connected={connected} runId={id!} />
-      )}
+            <Panel title={<span className="flex items-center gap-1.5"><Stethoscope className="h-3.5 w-3.5" /> Diagnosis</span>} actions={<Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => diagnosisQuery.refetch()}>Re-check</Button>}>
+              <QueryState isLoading={diagnosisQuery.isLoading} error={diagnosisQuery.error}>
+                {diagnosisQuery.data && (
+                  <div className="space-y-2 text-xs">
+                    <p>
+                      <span className="text-emerald-500/70">Suggested next action: </span>
+                      <span className="text-emerald-100">{diagnosisQuery.data.suggested_next_action || 'none'}</span>
+                    </p>
+                    {diagnosisQuery.data.last_classified_error && (
+                      <p><span className="text-emerald-500/70">Last error: </span><span className="text-rose-300">{diagnosisQuery.data.last_classified_error}</span></p>
+                    )}
+                    <p className="text-emerald-500/70">
+                      Task counts:{' '}
+                      {Object.entries(diagnosisQuery.data.task_counts ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ') || 'none'}
+                    </p>
+                  </div>
+                )}
+              </QueryState>
+            </Panel>
 
-      {/* Tab 4: Raw JSON Spec */}
-      {activeTab === 'manifest' && (
-        <div className="rounded-xl border border-surface-border bg-[#020504] p-4 overflow-x-auto shadow-terminal-glow">
-          <pre className="text-xs text-emerald-400 font-mono">
-            {JSON.stringify(run, null, 2)}
-          </pre>
-        </div>
-      )}
+            <Panel title={`Tasks (${tasks.length})`}>
+              <QueryState isLoading={false} error={null} isEmpty={!tasks.length} emptyMessage="No tasks planned yet.">
+                <div className="overflow-x-auto">
+                  <table className={tableClass}>
+                    <thead>
+                      <tr>
+                        <th className={thClass}>#</th>
+                        <th className={thClass}>Status</th>
+                        <th className={thClass}>Worker</th>
+                        <th className={thClass}>Rows</th>
+                        <th className={thClass}>Written</th>
+                        <th className={thClass}>Attempts</th>
+                        <th className={thClass}>Duration</th>
+                        <th className={thClass}>Error</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tasks.map((t) => (
+                        <tr key={t.id}>
+                          <td className={tdClass}>{t.task_index}</td>
+                          <td className={tdClass}><StatusBadge status={t.status} size="sm" /></td>
+                          <td className={tdClass} title={t.worker_id ?? ''}>{t.worker_id ?? '—'}</td>
+                          <td className={tdClass}>{formatNumber(t.rows_read)}</td>
+                          <td className={tdClass}>{formatBytes(t.bytes_written)}</td>
+                          <td className={tdClass}>{t.attempt_count}</td>
+                          <td className={tdClass}>{formatDuration(t.started_at, t.finished_at)}</td>
+                          <td className={`${tdClass} max-w-xs break-words text-rose-300/80`}>{t.error_message ?? ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </QueryState>
+            </Panel>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between text-[11px] text-emerald-500/70">
+                <span>Live events: {sse.connectionState.toLowerCase()}{sse.retryCount ? ` (retry ${sse.retryCount})` : ''}</span>
+                {sse.error && <span className="text-amber-400">{sse.error}</span>}
+              </div>
+              <LogConsole events={events} connected={sse.connected} runId={run.id} />
+            </div>
+
+            {!active && (
+              <Panel title="Artifacts">
+                <QueryState isLoading={artifactsQuery.isLoading} error={artifactsQuery.error} isEmpty={!artifactsQuery.data?.objects.length} emptyMessage="No committed Parquet objects.">
+                  <div className="overflow-x-auto">
+                    <table className={tableClass}>
+                      <thead>
+                        <tr>
+                          <th className={thClass}>Object</th>
+                          <th className={thClass}>Rows</th>
+                          <th className={thClass}>Size</th>
+                          <th className={thClass}>Task</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {artifactsQuery.data?.objects.map((o, i) => (
+                          <tr key={i}>
+                            <td className={`${tdClass} break-all`}>{String(o.object_key ?? o.key ?? o.path ?? JSON.stringify(o))}</td>
+                            <td className={tdClass}>{o.row_count != null ? formatNumber(Number(o.row_count)) : '—'}</td>
+                            <td className={tdClass}>{o.byte_size != null ? formatBytes(Number(o.byte_size)) : '—'}</td>
+                            <td className={tdClass}>{shortId(o.task_id)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </QueryState>
+              </Panel>
+            )}
+
+            <RecoverModal runId={run.id} isOpen={recoverOpen} onClose={() => setRecoverOpen(false)} onDone={refreshAll} />
+            <RegistrationRetryModal runId={run.id} isOpen={registrationOpen} onClose={() => setRegistrationOpen(false)} onDone={refreshAll} />
+          </>
+        )}
+      </QueryState>
     </div>
   );
 };
 
+interface ActionModalProps {
+  runId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}
+
+const RecoverModal: React.FC<ActionModalProps> = ({ runId, isOpen, onClose, onDone }) => {
+  const toast = useToast();
+  const [action, setAction] = useState<RecoveryAction>('reconcile_commit');
+  const [reason, setReason] = useState('');
+  const mutation = useMutation({
+    mutationFn: () => recoverRun(runId, action, reason.trim()),
+    onSuccess: (res) => {
+      toast.success(`${res.message || res.action}: run is ${res.status}.`, res.changed ? 'Recovered' : 'No change');
+      onDone();
+      onClose();
+    },
+  });
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Recover run" subtitle="Audited action (POST /runs/{id}/recover)">
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+      >
+        <Select label="Action" value={action} onChange={(e) => setAction(e.target.value as RecoveryAction)} options={RECOVERY_ACTIONS} />
+        <Input label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="commit is overdue" helperText="Stored in the audit log." required />
+        {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>Close</Button>
+          <Button type="submit" icon={LifeBuoy} loading={mutation.isPending} disabled={!reason.trim()}>Run action</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const RegistrationRetryModal: React.FC<ActionModalProps> = ({ runId, isOpen, onClose, onDone }) => {
+  const toast = useToast();
+  const [configYaml, setConfigYaml] = useState('');
+  const mutation = useMutation({
+    mutationFn: () => retryRegistration(runId, configYaml),
+    onSuccess: () => {
+      toast.success('Iceberg registration was queued again.');
+      onDone();
+      onClose();
+    },
+  });
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Retry Iceberg registration">
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+      >
+        <TextArea label="Override config YAML (optional)" rows={6} value={configYaml} onChange={(e) => setConfigYaml(e.target.value)} helperText="Leave empty to retry with the stored configuration." />
+        {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>Close</Button>
+          <Button type="submit" icon={RotateCcw} loading={mutation.isPending}>Retry</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};

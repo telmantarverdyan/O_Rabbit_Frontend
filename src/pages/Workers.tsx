@@ -1,271 +1,184 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWorkers, drainWorker, pingWorker } from '@/api/workers';
-import { MetricCard } from '@/components/common/MetricCard';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ban, Copy, KeyRound, RefreshCw } from 'lucide-react';
+import { createEnrollmentToken, fetchWorkerIdentities, fetchWorkers, revokeWorkerIdentity } from '@/api/workers';
+import { errorMessage } from '@/api/client';
 import { Button } from '@/components/common/Button';
+import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { Checkbox, PageTitle, Panel, QueryState, tableClass, tdClass, thClass } from '@/components/common/QueryState';
 import { useToast } from '@/components/common/Toast';
-import { terminalSound } from '@/utils/terminalSound';
-import { Server, Cpu, Activity, HardDrive, RefreshCw, Layers, CheckCircle2, Terminal, Radio, ShieldAlert, Power } from 'lucide-react';
-import { Worker } from '@/api/types';
+import { formatTime } from '@/utils/format';
 
 export const Workers: React.FC = () => {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [activeWorkerModal, setActiveWorkerModal] = useState<Worker | null>(null);
-  const [pingingId, setPingingId] = useState<string | null>(null);
-  const [drainingId, setDrainingId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(true);
+  const [enrollOpen, setEnrollOpen] = useState(false);
 
-  const { data: workers = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['workers'],
-    queryFn: fetchWorkers,
-    refetchInterval: 3000,
+  const workersQuery = useQuery({ queryKey: ['workers', showAll], queryFn: () => fetchWorkers(showAll), refetchInterval: 10000 });
+  const identitiesQuery = useQuery({ queryKey: ['worker-identities'], queryFn: fetchWorkerIdentities });
+
+  const revoke = useMutation({
+    mutationFn: (id: string) => revokeWorkerIdentity(id),
+    onSuccess: () => {
+      toast.success('Identity revoked. That worker can no longer connect.');
+      queryClient.invalidateQueries({ queryKey: ['worker-identities'] });
+    },
+    onError: (err) => toast.error(errorMessage(err), 'Revoke failed'),
   });
 
-  const pingMutation = useMutation({
-    mutationFn: async (workerId: string) => {
-      setPingingId(workerId);
-      return await pingWorker(workerId);
-    },
-    onSuccess: (res, workerId) => {
-      setPingingId(null);
-      terminalSound.playSuccess();
-      toast.success(`Worker ${workerId.slice(0, 8)}: ${res.status} (${res.latencyMs}ms RTT)`);
-    },
-    onError: () => {
-      setPingingId(null);
-      terminalSound.playError();
-      toast.error('Ping failed');
-    },
-  });
-
-  const drainMutation = useMutation({
-    mutationFn: async (workerId: string) => {
-      setDrainingId(workerId);
-      return await drainWorker(workerId);
-    },
-    onSuccess: (res, workerId) => {
-      setDrainingId(null);
-      terminalSound.playClick();
-      toast.info(res.message);
-      queryClient.invalidateQueries({ queryKey: ['workers'] });
-    },
-    onError: () => {
-      setDrainingId(null);
-      toast.error('Drain command rejected by master');
-    },
-  });
-
-  const now = Date.now();
-
-  const totalCPUs = workers.reduce(
-    (acc, w) => acc + (w.capabilities_json?.cpus || 1),
-    0
-  );
+  const workers = workersQuery.data ?? [];
+  const identities = identitiesQuery.data ?? [];
 
   return (
-    <div className="space-y-6 font-mono">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-emerald-100 tracking-tight flex items-center gap-2 glow-emerald">
-            <Server className="h-5 w-5 text-emerald-400" />
-            Worker Fleet Telemetry
-          </h2>
-          <p className="text-xs text-emerald-500/80 mt-0.5">
-            Distributed execution nodes polling for partition tasks, extracting SQL rows, and streaming Parquet to S3.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          icon={RefreshCw}
-          size="sm"
-          onClick={() => refetch()}
-          loading={isFetching}
-        >
-          Refresh Fleet
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageTitle
+        title="Workers"
+        subtitle="Worker processes that pull tasks from this master over gRPC."
+        actions={<Button variant="cyber" icon={KeyRound} onClick={() => setEnrollOpen(true)}>Enrollment token</Button>}
+      />
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MetricCard
-          title="Active Workers"
-          value={workers.length}
-          subtitle="Polling gRPC Control Plane"
-          icon={Server}
-          color="emerald"
-        />
-        <MetricCard
-          title="Total Worker Cores"
-          value={totalCPUs}
-          subtitle="Aggregate cluster CPU capacity"
-          icon={Cpu}
-          color="cyan"
-        />
-        <MetricCard
-          title="Task Concurrency"
-          value={workers.length > 0 ? `${workers.length}x parallel` : '0x'}
-          subtitle="Pull-based task scheduling"
-          icon={Activity}
-          color="purple"
-        />
-      </div>
-
-      {/* Workers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {workers.map((worker) => {
-          const cap = worker.capabilities_json || {};
-          const lastHbTime = new Date(worker.last_heartbeat).getTime();
-          const ageSec = Math.max(0, Math.floor((now - lastHbTime) / 1000));
-          const isHealthy = ageSec < 20;
-
-          return (
-            <div
-              key={worker.id}
-              className="p-5 rounded-xl border border-surface-border bg-surface/90 backdrop-blur-md shadow-terminal-sm space-y-4 hover:border-emerald-500/40 transition group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-700/40">
-                    <Server className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-emerald-100 text-sm font-mono truncate max-w-[150px]">
-                      {cap.hostname || `worker-${worker.id.slice(0, 8)}`}
-                    </h3>
-                    <span className="text-[10px] text-emerald-600 font-mono">
-                      ID: {worker.id.slice(0, 12)}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-mono border ${
-                    isHealthy
-                      ? 'bg-emerald-950 text-emerald-300 border-emerald-700/40'
-                      : 'bg-amber-950 text-amber-300 border-amber-700/40 animate-pulse'
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${isHealthy ? 'bg-[#00ff66] shadow-[0_0_4px_#00ff66]' : 'bg-amber-400'}`} />
-                  <span>{isHealthy ? '[ONLINE]' : `[LAG ${ageSec}s]`}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-xs font-mono bg-[#020504] p-3.5 rounded-lg border border-surface-border text-emerald-400">
-                <div className="flex justify-between">
-                  <span className="text-emerald-600">Address:</span>
-                  <span className="text-emerald-200 font-semibold">{worker.addr}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-emerald-600">OS / Arch:</span>
-                  <span className="text-emerald-300">
-                    {cap.os || 'linux'} / {cap.arch || 'amd64'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-emerald-600">CPU Cores:</span>
-                  <span className="text-emerald-300 font-bold">{cap.cpus || 1} Cores</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-emerald-600">Go Runtime:</span>
-                  <span className="text-emerald-400">{cap.go_version || 'go1.22'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-emerald-600">Process PID:</span>
-                  <span className="text-emerald-300">{cap.pid || '—'}</span>
-                </div>
-              </div>
-
-              <div className="text-[10px] text-emerald-600 font-mono flex items-center justify-between pt-1 border-t border-surface-border">
-                <span>Heartbeat: {new Date(worker.last_heartbeat).toLocaleTimeString()}</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Ready
-                </span>
-              </div>
-
-              {/* Operator Control Plane Actions */}
-              <div className="flex items-center justify-between pt-2 border-t border-surface-border">
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={Radio}
-                    loading={pingingId === worker.id}
-                    onClick={() => pingMutation.mutate(worker.id)}
-                  >
-                    Ping
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-amber-400 hover:text-amber-300 hover:bg-amber-950/40"
-                    icon={Power}
-                    loading={drainingId === worker.id}
-                    onClick={() => {
-                      if (window.confirm(`Gracefully drain worker ${worker.id}?`)) {
-                        drainMutation.mutate(worker.id);
-                      }
-                    }}
-                  >
-                    Drain
-                  </Button>
-                </div>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={Layers}
-                  onClick={() => setActiveWorkerModal(worker)}
-                >
-                  Tasks ({worker.active_tasks || 0})
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-
-        {workers.length === 0 && !isLoading && (
-          <div className="col-span-full py-16 text-center text-emerald-700 border border-dashed border-emerald-950 rounded-xl space-y-3 font-mono text-xs">
-            <p>[No active workers registered with master]</p>
-            <p className="text-[11px] text-emerald-800">
-              Start workers using: <code className="text-emerald-400">./deploy-worker.sh</code> or <code className="text-emerald-400">orabbit-worker</code>
-            </p>
+      <Panel
+        title={`${workers.length} workers`}
+        actions={
+          <>
+            <Checkbox label="Include inactive" checked={showAll} onChange={setShowAll} />
+            <Button variant="ghost" size="sm" icon={RefreshCw} loading={workersQuery.isFetching} onClick={() => workersQuery.refetch()}>Refresh</Button>
+          </>
+        }
+      >
+        <QueryState isLoading={workersQuery.isLoading} error={workersQuery.error} onRetry={() => workersQuery.refetch()} isEmpty={!workers.length} emptyMessage="No workers have connected to this master.">
+          <div className="overflow-x-auto">
+            <table className={tableClass}>
+              <thead>
+                <tr>
+                  <th className={thClass}>Worker</th>
+                  <th className={thClass}>Status</th>
+                  <th className={thClass}>Address</th>
+                  <th className={thClass}>Last heartbeat</th>
+                  <th className={thClass}>Instances</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workers.map((w) => (
+                  <tr key={w.id}>
+                    <td className={tdClass}>{w.id}</td>
+                    <td className={tdClass}><StatusBadge status={w.status} size="sm" /></td>
+                    <td className={tdClass}>{w.addr || '—'}</td>
+                    <td className={`${tdClass} whitespace-nowrap`}>{formatTime(w.last_heartbeat)}</td>
+                    <td className={tdClass}>{w.instances?.length ?? 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+        </QueryState>
+      </Panel>
 
-      {/* Active Worker Task Inspector Modal */}
-      {activeWorkerModal && (
-        <Modal
-          isOpen={!!activeWorkerModal}
-          onClose={() => setActiveWorkerModal(null)}
-          title={`Worker Node: ${activeWorkerModal.capabilities_json?.hostname || activeWorkerModal.id.slice(0, 12)}`}
-          subtitle={`Address: ${activeWorkerModal.addr} • gRPC Lease Socket`}
-          maxWidth="lg"
-        >
-          <div className="space-y-4 font-mono text-xs text-emerald-300">
-            <div className="p-3 bg-[#020504] rounded-lg border border-surface-border space-y-1.5">
-              <div className="text-[10px] text-emerald-600 font-bold uppercase">Assigned Partition Leases:</div>
-              <div className="text-emerald-200">
-                {activeWorkerModal.active_tasks && activeWorkerModal.active_tasks > 0
-                  ? `Processing ${activeWorkerModal.active_tasks} active task slices.`
-                  : 'Idle (Heartbeating). Ready to claim next partition lease.'}
-              </div>
-              <div className="text-[11px] text-emerald-500/80">
-                Worker runtime: {activeWorkerModal.capabilities_json?.go_version || 'go1.22'} on {activeWorkerModal.capabilities_json?.os || 'linux'}/{activeWorkerModal.capabilities_json?.arch || 'amd64'}.
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-surface-border">
-              <Button variant="ghost" size="sm" onClick={() => setActiveWorkerModal(null)}>
-                Close
-              </Button>
-            </div>
+      <Panel title={`Enrolled identities (${identities.length})`} actions={<Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => identitiesQuery.refetch()}>Refresh</Button>}>
+        <QueryState isLoading={identitiesQuery.isLoading} error={identitiesQuery.error} isEmpty={!identities.length} emptyMessage="No master-issued worker identities.">
+          <div className="overflow-x-auto">
+            <table className={tableClass}>
+              <thead>
+                <tr>
+                  <th className={thClass}>Name</th>
+                  <th className={thClass}>Host</th>
+                  <th className={thClass}>Pool</th>
+                  <th className={thClass}>Status</th>
+                  <th className={thClass}>Certificate expires</th>
+                  <th className={thClass} />
+                </tr>
+              </thead>
+              <tbody>
+                {identities.map((i) => (
+                  <tr key={i.id}>
+                    <td className={tdClass}>{i.name}<div className="text-[10px] text-emerald-600">{i.id}</div></td>
+                    <td className={tdClass}>{i.hostname}</td>
+                    <td className={tdClass}>{i.pool || '—'}</td>
+                    <td className={tdClass}><StatusBadge status={i.revoked_at ? 'REVOKED' : i.status} size="sm" /></td>
+                    <td className={`${tdClass} whitespace-nowrap`}>{formatTime(i.cert_not_after)}</td>
+                    <td className={`${tdClass} text-right`}>
+                      {!i.revoked_at && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          icon={Ban}
+                          loading={revoke.isPending && revoke.variables === i.id}
+                          onClick={() => {
+                            if (window.confirm(`Revoke ${i.name}? The worker is disconnected immediately.`)) revoke.mutate(i.id);
+                          }}
+                        >
+                          Revoke
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </Modal>
-      )}
+        </QueryState>
+      </Panel>
+
+      {enrollOpen && <EnrollmentModal onClose={() => setEnrollOpen(false)} />}
     </div>
   );
 };
 
+const EnrollmentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const toast = useToast();
+  const [pool, setPool] = useState('');
+  const [ttlMinutes, setTtlMinutes] = useState('60');
+  const [maxUses, setMaxUses] = useState('1');
+  const mutation = useMutation({
+    mutationFn: () =>
+      createEnrollmentToken({
+        pool: pool.trim() || undefined,
+        ttl_seconds: Math.round(Number(ttlMinutes) * 60) || undefined,
+        max_uses: Number(maxUses) || undefined,
+      }),
+  });
+  const token = mutation.data?.token;
+
+  return (
+    <Modal isOpen onClose={onClose} title="Create worker enrollment token" subtitle="A new worker uses it once to get its certificate.">
+      {token ? (
+        <div className="space-y-3">
+          <p className="text-xs text-amber-300">Copy it now. The master stores only a hash and cannot show it again.</p>
+          <pre className="break-all rounded-lg border border-surface-border bg-terminal-dark p-3 text-xs text-emerald-200">{token}</pre>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              icon={Copy}
+              onClick={() => navigator.clipboard.writeText(token).then(() => toast.success('Copied.'), (err) => toast.error(String(err), 'Copy failed'))}
+            >
+              Copy
+            </Button>
+            <Button onClick={onClose}>Done</Button>
+          </div>
+        </div>
+      ) : (
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <Input label="Pool" value={pool} onChange={(e) => setPool(e.target.value)} helperText="Optional. Runs with this worker_pool go only to these workers." />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Valid for (minutes)" type="number" min={1} value={ttlMinutes} onChange={(e) => setTtlMinutes(e.target.value)} />
+            <Input label="Max uses" type="number" min={1} value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
+          </div>
+          {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button type="submit" icon={KeyRound} loading={mutation.isPending}>Create</Button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+};
