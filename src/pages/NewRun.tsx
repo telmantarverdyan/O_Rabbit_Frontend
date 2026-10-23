@@ -1,192 +1,56 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Play, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Download, Play, ShieldCheck, Upload } from 'lucide-react';
 import { fetchSourceEngines } from '@/api/connections';
 import { submitRun, validateRun } from '@/api/runs';
 import { ApiError, errorMessage } from '@/api/client';
-import { ConsistencyMode, IcebergEngine, JsonObject, RunSubmitRequest, RunValidation } from '@/api/types';
+import { IcebergEngine, RunSubmitRequest, RunValidation } from '@/api/types';
 import { Button } from '@/components/common/Button';
 import { Input, Select } from '@/components/common/Input';
 import { Checkbox, PageTitle, Panel, QueryState, TextArea } from '@/components/common/QueryState';
 import { useToast } from '@/components/common/Toast';
-import { parseJsonField, splitList } from '@/utils/format';
+import { EMPTY_FORM, RunForm, TRI_OPTIONS, TriState, buildRequest, parseRunFile, redact, withoutSecrets } from '@/utils/runForm';
 
-/** '' means "leave it to the master's default", so the field is not sent. */
-type TriState = '' | 'true' | 'false';
-
-interface RunForm {
-  engine: string;
-  dsn: string;
-  mode: 'table' | 'query';
-  table: string;
-  query: string;
-  cursorColumn: string;
-  incremental: boolean;
-  whereClause: string;
-  selectColumns: string;
-  columnTypes: string;
-  recordPath: string;
-  format: string;
-
-  s3Endpoint: string;
-  s3Region: string;
-  s3Bucket: string;
-  s3Prefix: string;
-  s3ForcePathStyle: TriState;
-  s3AccessKeyId: string;
-  s3SecretAccessKey: string;
-
-  autoTune: TriState;
-  maxInFlightTasks: string;
-  plannedTasks: string;
-  targetRowsPerTask: string;
-  targetFileBytes: string;
-
-  icebergEnabled: boolean;
-  icebergEngine: IcebergEngine;
-  icebergTable: string;
-  partitionKeys: string;
-  icebergOptions: string;
-  icebergConfigYaml: string;
-
-  consistencyMode: '' | ConsistencyMode;
-  workerPool: string;
-}
-
-const EMPTY_FORM: RunForm = {
-  engine: '',
-  dsn: '',
-  mode: 'table',
-  table: '',
-  query: '',
-  cursorColumn: '',
-  incremental: false,
-  whereClause: '',
-  selectColumns: '',
-  columnTypes: '',
-  recordPath: '',
-  format: '',
-  s3Endpoint: '',
-  s3Region: '',
-  s3Bucket: '',
-  s3Prefix: '',
-  s3ForcePathStyle: '',
-  s3AccessKeyId: '',
-  s3SecretAccessKey: '',
-  autoTune: '',
-  maxInFlightTasks: '',
-  plannedTasks: '',
-  targetRowsPerTask: '',
-  targetFileBytes: '',
-  icebergEnabled: false,
-  icebergEngine: 'rest-go',
-  icebergTable: '',
-  partitionKeys: '',
-  icebergOptions: '',
-  icebergConfigYaml: '',
-  consistencyMode: '',
-  workerPool: '',
-};
-
-const TRI_OPTIONS = [
-  { label: 'Master default', value: '' },
-  { label: 'Yes', value: 'true' },
-  { label: 'No', value: 'false' },
-];
-
-function optionalInt(raw: string, field: string): number | undefined {
-  if (!raw.trim()) return undefined;
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n < 0) throw new Error(`${field} must be a whole number ≥ 0`);
-  return n;
-}
-
-function optionalBool(v: TriState): boolean | undefined {
-  return v === '' ? undefined : v === 'true';
-}
-
-function optionalString(v: string): string | undefined {
-  const t = v.trim();
-  return t ? t : undefined;
-}
-
-/** Drops undefined values so the request only carries what the user set. */
-function compact<T extends object>(obj: T): T | undefined {
-  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
-  return entries.length ? (Object.fromEntries(entries) as T) : undefined;
-}
-
-/** Turns the form into the master's RunSubmitRequest. Throws on invalid input. */
-function buildRequest(f: RunForm): RunSubmitRequest {
-  const columnTypes = parseJsonField<Record<string, string>>(f.columnTypes, 'Column types');
-  const icebergOptions = parseJsonField<JsonObject>(f.icebergOptions, 'Iceberg options');
-  const selectColumns = splitList(f.selectColumns);
-  const partitionKeys = splitList(f.partitionKeys);
-
-  return {
-    source: {
-      engine: f.engine,
-      dsn: f.dsn.trim(),
-      mode: f.mode,
-      table: f.mode === 'table' ? optionalString(f.table) : undefined,
-      query: f.mode === 'query' ? optionalString(f.query) : undefined,
-      cursor_column: optionalString(f.cursorColumn),
-      incremental: f.incremental || undefined,
-      where_clause: optionalString(f.whereClause),
-      select_columns: selectColumns.length ? selectColumns : undefined,
-      column_types: columnTypes,
-      record_path: optionalString(f.recordPath),
-      format: optionalString(f.format),
-    },
-    target: compact({
-      s3_endpoint: optionalString(f.s3Endpoint),
-      s3_region: optionalString(f.s3Region),
-      s3_bucket: optionalString(f.s3Bucket),
-      s3_prefix: optionalString(f.s3Prefix),
-      s3_force_path_style: optionalBool(f.s3ForcePathStyle),
-      s3_access_key_id: optionalString(f.s3AccessKeyId),
-      s3_secret_access_key: optionalString(f.s3SecretAccessKey),
-    }) ?? {},
-    performance: compact({
-      auto_tune: optionalBool(f.autoTune),
-      max_in_flight_tasks: optionalInt(f.maxInFlightTasks, 'Max in-flight tasks'),
-      planned_tasks: optionalInt(f.plannedTasks, 'Planned tasks'),
-      target_rows_per_task: optionalInt(f.targetRowsPerTask, 'Target rows per task'),
-      target_file_bytes: optionalInt(f.targetFileBytes, 'Target file bytes'),
-    }),
-    iceberg: f.icebergEnabled
-      ? {
-          enabled: true,
-          engine: f.icebergEngine,
-          table: optionalString(f.icebergTable),
-          partition_keys: partitionKeys.length ? partitionKeys : undefined,
-          options: icebergOptions,
-          config_yaml: optionalString(f.icebergConfigYaml),
-        }
-      : undefined,
-    consistency: f.consistencyMode ? { mode: f.consistencyMode } : undefined,
-    worker_pool: optionalString(f.workerPool),
-  };
-}
-
-/** The request as shown in the preview, with secrets hidden. */
-function redact(req: RunSubmitRequest): RunSubmitRequest {
-  return {
-    ...req,
-    source: { ...req.source, dsn: req.source.dsn ? '••••••' : '' },
-    target: {
-      ...req.target,
-      ...(req.target.s3_secret_access_key ? { s3_secret_access_key: '••••••' } : {}),
-    },
-  };
-}
 
 export const NewRun: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [form, setForm] = useState<RunForm>(EMPTY_FORM);
   const [formError, setFormError] = useState<unknown>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const loadFile = async (file: File) => {
+    try {
+      const { form: loaded, kind, ignored } = parseRunFile(await file.text());
+      setForm(loaded);
+      setValidation(null);
+      setFormError(null);
+      toast.success(
+        kind === 'cli'
+          ? `Loaded an orabbit-client run file.${ignored.length ? ` Not used by one-shot runs: ${ignored.join(', ')}.` : ''}`
+          : 'Loaded a saved run.',
+        file.name
+      );
+      if (!loaded.dsn) toast.info('The file has no DSN. Enter it before starting the run.');
+    } catch (err) {
+      toast.error(errorMessage(err), `Could not load ${file.name}`);
+    }
+  };
+
+  const saveFile = () => {
+    try {
+      const body = JSON.stringify(withoutSecrets(buildRequest(form)), null, 2);
+      const url = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orabbit-run-${form.table || form.engine || 'config'}.json`.replace(/[^\w.-]+/g, '_');
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setFormError(err);
+    }
+  };
   const [validation, setValidation] = useState<RunValidation | null>(null);
 
   const enginesQuery = useQuery({ queryKey: ['source-engines'], queryFn: fetchSourceEngines, staleTime: 60000 });
@@ -259,6 +123,27 @@ export const NewRun: React.FC = () => {
       <PageTitle
         title="New Run"
         subtitle="Export a table or query to Parquet on S3, optionally registered in Iceberg (POST /runs/submit)."
+        actions={
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) loadFile(file);
+                e.target.value = '';
+              }}
+            />
+            <Button variant="outline" icon={Upload} onClick={() => fileInputRef.current?.click()} title="Load a saved run or an orabbit-client run file (JSON)">
+              Load file
+            </Button>
+            <Button variant="outline" icon={Download} onClick={saveFile} title="Save this form as JSON, without the DSN and S3 secret key">
+              Save
+            </Button>
+          </>
+        }
       />
 
       <QueryState isLoading={enginesQuery.isLoading} error={enginesQuery.error} onRetry={() => enginesQuery.refetch()} isEmpty={!engines.length} emptyMessage="The master reports no source engines that support one-shot runs.">

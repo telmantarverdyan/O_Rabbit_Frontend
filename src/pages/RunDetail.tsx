@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Database, FileText, LifeBuoy, RefreshCw, RotateCcw, Rows3, Stethoscope, XCircle } from 'lucide-react';
+import { ArrowLeft, Database, FileText, LifeBuoy, RefreshCw, RotateCcw, RotateCw, Rows3, Stethoscope, XCircle } from 'lucide-react';
 import {
   cancelRegistration,
   fetchRun,
@@ -24,7 +24,7 @@ import { PageTitle, Panel, QueryState, TextArea, tableClass, tdClass, thClass } 
 import { useToast } from '@/components/common/Toast';
 import { TaskProgressChart } from '@/components/charts/TaskProgressChart';
 import { ACTIVE_RUN_STATUSES, formatBytes, formatDuration, formatNumber, formatTime, shortId } from '@/utils/format';
-import { useCancelRun } from './Runs';
+import { useCancelRun, useRunAgain } from './Runs';
 
 const RECOVERY_ACTIONS: Array<{ label: string; value: RecoveryAction }> = [
   { label: 'reconcile_commit: re-check a stuck COMMITTING run', value: 'reconcile_commit' },
@@ -44,6 +44,7 @@ export const RunDetail: React.FC = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
   const cancel = useCancelRun();
+  const runAgain = useRunAgain();
   const [recoverOpen, setRecoverOpen] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState(false);
 
@@ -114,6 +115,11 @@ export const RunDetail: React.FC = () => {
                       }}
                     >
                       Cancel run
+                    </Button>
+                  )}
+                  {!active && run.job_id && (
+                    <Button size="sm" icon={RotateCw} loading={runAgain.isPending} onClick={() => runAgain.mutate(run.job_id)} title="Start a new run of the same job">
+                      Run again
                     </Button>
                   )}
                   <Button variant="secondary" size="sm" icon={LifeBuoy} onClick={() => setRecoverOpen(true)}>Recover</Button>

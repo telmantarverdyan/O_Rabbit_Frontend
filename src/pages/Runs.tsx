@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, XCircle } from 'lucide-react';
-import { cancelRun, fetchRuns } from '@/api/runs';
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, RotateCw, XCircle } from 'lucide-react';
+import { cancelRun, fetchRuns, startJobRun } from '@/api/runs';
 import { errorMessage } from '@/api/client';
 import { Run } from '@/api/types';
 import { Button } from '@/components/common/Button';
@@ -30,8 +30,28 @@ export function useCancelRun() {
   });
 }
 
+/**
+ * Starts a new run of the job behind an earlier run (POST /jobs/{id}/runs).
+ * One-shot runs also store a job, so every run can be repeated this way.
+ */
+export function useRunAgain() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: (jobId: string) => startJobRun(jobId),
+    onSuccess: (res) => {
+      toast.success(`Run ${shortId(res.run.id)} planned ${res.tasks.length} tasks.`, 'Run started');
+      queryClient.invalidateQueries({ queryKey: ['runs'] });
+      navigate(`/runs/${res.run.id}`);
+    },
+    onError: (err) => toast.error(errorMessage(err), 'Run again failed'),
+  });
+}
+
 export const RunsTable: React.FC<{ runs: Run[] }> = ({ runs }) => {
   const cancel = useCancelRun();
+  const runAgain = useRunAgain();
   return (
     <div className="overflow-x-auto">
       <table className={tableClass}>
@@ -57,7 +77,19 @@ export const RunsTable: React.FC<{ runs: Run[] }> = ({ runs }) => {
               <td className={`${tdClass} whitespace-nowrap`}>{formatTime(run.started_at)}</td>
               <td className={tdClass}>{formatDuration(run.started_at, run.finished_at)}</td>
               <td className={`${tdClass} max-w-xs truncate text-rose-300/80`} title={run.error_summary ?? ''}>{run.error_summary ?? ''}</td>
-              <td className={`${tdClass} text-right`}>
+              <td className={`${tdClass} whitespace-nowrap text-right space-x-1`}>
+                {!ACTIVE_RUN_STATUSES.has(run.status) && run.job_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={RotateCw}
+                    title="Start a new run of the same job"
+                    loading={runAgain.isPending && runAgain.variables === run.job_id}
+                    onClick={() => runAgain.mutate(run.job_id)}
+                  >
+                    Run again
+                  </Button>
+                )}
                 {ACTIVE_RUN_STATUSES.has(run.status) && run.status !== 'COMMITTING' && (
                   <Button
                     variant="danger"
