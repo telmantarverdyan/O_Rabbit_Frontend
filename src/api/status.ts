@@ -1,24 +1,9 @@
-import { apiClient } from './client';
-import { StatusInfo } from './types';
-import { mockStore } from './mockDataStore';
+import { apiClient, apiRequest, Session } from './client';
+import { MasterStatus } from './types';
 
-export async function fetchStatus(): Promise<StatusInfo> {
-  try {
-    const res = await apiClient<StatusInfo>('/status');
-    if (res && res.status) return res;
-  } catch {}
-  return mockStore.getStatus();
+/** GET /status (needs the API token). Pass a session to test credentials before saving them. */
+export async function fetchStatus(session?: Session): Promise<MasterStatus> {
+  if (session) return (await apiRequest<MasterStatus>('/status', {}, session)).data;
+  return apiClient<MasterStatus>('/status');
 }
 
-export async function fetchHealth(): Promise<{ status: string }> {
-  try {
-    const res = await apiClient<string>('/healthz');
-    return { status: res === 'ok' ? 'healthy' : 'degraded' };
-  } catch {
-    return { status: 'unreachable' };
-  }
-}
-
-export async function fetchMetrics(): Promise<string> {
-  return await apiClient<string>('/metrics');
-}

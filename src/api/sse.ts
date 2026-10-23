@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getAuthToken, getCustomBackendUrl } from './client';
+import { API_PREFIX, masterHeaders } from './client';
 import { RunEvent } from './types';
 
 const MAX_EVENT_BUFFER_SIZE = 1000;
@@ -110,10 +110,7 @@ export function useRunSSE(runId?: string): UseRunSSEReturn {
     async function streamSSE() {
       if (!isSubscribedRef.current) return;
 
-      const token = getAuthToken();
-      const customBackend = getCustomBackendUrl();
-      const basePath = `/sse?run_id=${encodeURIComponent(runId!)}`;
-      const url = customBackend ? `${customBackend}${basePath}` : basePath;
+      const url = `${API_PREFIX}/runs/${encodeURIComponent(runId!)}/events/stream`;
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -122,13 +119,9 @@ export function useRunSSE(runId?: string): UseRunSSEReturn {
         setConnectionState((prev) => (prev === 'CONNECTED' ? 'RECONNECTING' : 'CONNECTING'));
         setError(null);
 
-        const headers: HeadersInit = {
-          Accept: 'text/event-stream',
-          'Cache-Control': 'no-cache',
-        };
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
+        const headers = masterHeaders();
+        headers.set('Accept', 'text/event-stream');
+        headers.set('Cache-Control', 'no-cache');
 
         const response = await fetch(url, {
           headers,

@@ -1,173 +1,284 @@
+// Types mirror the JSON produced by the O_Rabbit master
+// (../O_Rabbit/internal/db and ../O_Rabbit/internal/http). Keep them in sync.
+
 export type RunStatus = 'PLANNING' | 'RUNNING' | 'COMMITTING' | 'SUCCEEDED' | 'FAILED' | 'CANCELED';
 export type TaskStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELED' | 'QUARANTINED';
 export type ConnectionKind = 'source' | 'target';
 
+/** A JSON object whose shape the backend does not fix. */
+export type JsonObject = Record<string, unknown>;
+
+export interface Leadership {
+  instance_id: string;
+  leadership_state: string;
+  leadership_epoch: number;
+  lease_deadline_unix_ms: number;
+  last_successful_renewal_unix_ms: number;
+  ready: boolean;
+}
+
+/** GET /status. The base fields come from StatusInfo, so keep them loose. */
+export interface MasterStatus extends JsonObject {
+  leadership?: Leadership;
+}
+
 export interface Connection {
   id: string;
-  name?: string;
+  name: string;
   kind: ConnectionKind;
   engine: string;
-  metadata_json: Record<string, any>;
-  secret?: Record<string, any>;
+  metadata_json: JsonObject | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface JobOptions {
-  table?: string;
-  query?: string;
-  source_name?: string;
-  source_mode?: 'table' | 'query';
-  cursor_column?: string;
-  id_column?: string;
-  auto_tune?: boolean;
-  planned_tasks?: number;
-  max_in_flight_tasks?: number;
-  fetch_limit_rows?: number;
-  target_rows_per_task?: number;
-  target_file_bytes?: number;
-  max_rows_per_file?: number;
-  iceberg?: {
-    enabled?: boolean;
-    engine?: 'rest-go' | 'ice';
-    catalog_uri?: string;
-    warehouse?: string;
-    table?: string;
-    namespace?: string;
-  };
-  [key: string]: any;
+/** POST /connections, PUT /connections/{id}. `secret` is encrypted at rest and never returned. */
+export interface ConnectionRequest {
+  name: string;
+  kind: ConnectionKind;
+  engine: string;
+  metadata?: JsonObject;
+  secret?: JsonObject;
 }
 
 export interface Job {
   id: string;
+  name: string;
   source_connection_id: string;
   target_connection_id: string;
-  source_sql?: string;
-  target_namespace?: string;
-  target_table?: string;
-  write_mode?: string;
+  source_sql: string;
+  target_namespace: string;
+  target_table: string;
+  write_mode: string;
   incremental: boolean;
-  hwm_column?: string;
-  options_json: JobOptions;
+  hwm_column: string | null;
+  options_json: JsonObject | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface ParquetObject {
-  object_key: string;
-  byte_size?: number;
-  row_count?: number;
-  sha256?: string;
-  schema_fingerprint?: string;
-  part?: number;
-  file_index?: number;
-  attempt_number?: number;
-}
+export type JobRequest = Omit<Job, 'id' | 'created_at' | 'updated_at'>;
 
-export interface TaskPartitionSpec {
-  table?: string;
-  cursor_column?: string;
-  cursor_domain?: string;
-  lower_bound?: string | number;
-  upper_bound?: string | number;
-  lower_inclusive?: boolean;
-  upper_inclusive?: boolean;
-  output_part?: number;
-  [key: string]: any;
-}
-
-export interface Task {
-  id: string;
-  run_id: string;
-  worker_id?: string;
-  status: TaskStatus;
-  partition_spec_json: TaskPartitionSpec;
-  rows_read?: number;
-  rows_written?: number;
-  bytes_read?: number;
-  bytes_written?: number;
-  parquet_objects_json?: ParquetObject[] | string;
-  failure_message?: string;
-  created_at: string;
-  updated_at: string;
-  [key: string]: any;
+export interface TypeWarning {
+  column?: string;
+  message?: string;
+  [key: string]: unknown;
 }
 
 export interface Run {
   id: string;
   job_id: string;
-  status: RunStatus;
   dataset_key?: string;
-  correlation_id?: string;
-  error_message?: string;
-  created_at: string;
-  started_at?: string;
-  finished_at?: string;
-  rows_total?: number;
-  bytes_total?: number;
-  tasks?: Task[];
-  objects?: ParquetObject[];
-  [key: string]: any;
+  status: RunStatus;
+  correlation_id: string;
+  started_at: string;
+  finished_at: string | null;
+  error_summary: string | null;
+  failure_class?: string;
+  failure_phase?: '' | 'planning' | 'extract' | 'commit';
+  type_warnings: TypeWarning[] | null;
+  commit_id?: string;
+  commit_phase?: string;
+  operator_action_required: boolean;
+  data_status?: string;
+  catalog_status?: string;
+  readiness?: string;
+  registration_attempt: number;
+  registration_error_class?: string;
+  registration_next_retry_at?: string | null;
+  registration_blocked_by?: string;
+  registered_snapshot_or_metadata_id?: string;
 }
 
-export interface WorkerCapabilities {
-  hostname?: string;
-  pid?: number;
-  os?: string;
-  arch?: string;
-  cpus?: number;
-  go_version?: string;
-  version?: string;
-  [key: string]: any;
-}
-
-export interface Worker {
+export interface Task {
   id: string;
-  addr: string;
-  last_heartbeat: string;
-  capabilities_json: WorkerCapabilities;
-  active_tasks?: number;
-  status?: string;
-  [key: string]: any;
+  run_id: string;
+  task_index: number;
+  partition_spec_json: unknown;
+  worker_id: string | null;
+  status: TaskStatus;
+  rows_read: number;
+  bytes_read: number;
+  bytes_written: number;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  attempt_count: number;
+  next_eligible_at?: string | null;
+  failure_class?: string;
+  artifact_count: number;
+  artifact_bytes: number;
+  artifact_rows: number;
 }
 
-export interface StatusInfo {
-  pid: number;
-  http_addr: string;
-  grpc_addr: string;
-  db_path: string;
-  status?: string;
-  version?: string;
-  git_commit?: string;
-  uptime_seconds?: number;
-  active_runs?: number;
-  active_workers?: number;
-  total_rows_extracted?: number;
-  total_bytes_written?: number;
-  leadership?: {
-    active: boolean;
-    epoch: number;
-    leader_id?: string;
+/** GET /runs/{id} and POST /jobs/{id}/runs. */
+export interface RunWithTasks {
+  run: Run;
+  tasks: Task[];
+}
+
+export interface RunProgress {
+  run_id: string;
+  status: RunStatus;
+  progress: {
+    tasks_total: number;
+    tasks_pending: number;
+    tasks_running: number;
+    tasks_succeeded: number;
+    tasks_failed: number;
+    tasks_canceled: number;
+    rows_read: number;
+    bytes_written: number;
+    workers_active: number;
   };
-  [key: string]: any;
 }
 
 export interface RunEvent {
   id: string;
   run_id: string;
-  task_id?: string;
+  task_id?: string | null;
   ts: string;
   level: string;
   message: string;
-  fields_json?: Record<string, any> | string;
+  fields_json?: unknown;
 }
 
-export interface DatasetState {
-  dataset_key: string;
-  prefix: string;
-  max_hwm_value?: string;
-  max_part?: number;
-  next_part?: number;
-  last_committed_run_id?: string;
-  committed_at?: string;
+export interface RunEventsPage {
+  items: RunEvent[];
+  next_cursor: string;
+}
+
+export interface RunArtifact {
+  task_id: string;
+  [key: string]: unknown;
+}
+
+export interface RunArtifacts {
+  run_id: string;
+  objects: RunArtifact[];
+}
+
+export interface RunDiagnosis {
+  run_id: string;
+  status: RunStatus;
+  commit_phase?: string;
+  commit_age_seconds?: number;
+  last_classified_error?: string;
+  task_counts: Record<string, number>;
+  blocking_tasks?: JsonObject[];
+  registration?: JsonObject;
+  operator_review_required: boolean;
+  suggested_next_action: string;
+  generated_at: string;
+}
+
+/** Actions accepted by POST /runs/{id}/recover. */
+export type RecoveryAction = 'reconcile_commit' | 'registration_retry' | 'reconciliation_retry';
+
+export interface RecoveryResult {
+  action: string;
+  changed: boolean;
+  status: string;
+  message: string;
+}
+
+export interface Worker {
+  id: string;
+  addr: string;
+  status: string;
+  last_heartbeat: string;
+  capabilities_json: unknown;
+  instances: JsonObject[] | null;
+}
+
+export interface SourceEngine {
+  engine: string;
+  table_mode_supported: boolean;
+  ordered_cursor_supported: boolean;
+  query_supported: boolean;
+  query_languages?: string[];
+  query_incremental_supported?: boolean;
+  query_schema_inference_supported?: boolean;
+  oneshot_submit_supported?: boolean;
+}
+
+export type IcebergEngine = 'rest-go' | 'ice';
+export type ConsistencyMode = 'EVENTUAL' | 'STRONG_SNAPSHOT' | 'STRONG_CDC';
+
+/** POST /runs/validate and POST /runs/submit (RunSubmitRequest in docs/openapi.yaml). */
+export interface RunSubmitRequest {
+  source: {
+    engine: string;
+    dsn: string;
+    mode?: 'table' | 'query';
+    table?: string;
+    query?: string;
+    cursor_column?: string;
+    incremental?: boolean;
+    where_clause?: string;
+    select_columns?: string[];
+    column_types?: Record<string, string>;
+    record_path?: string;
+    format?: string;
+  };
+  target: {
+    s3_endpoint?: string;
+    s3_region?: string;
+    s3_bucket?: string;
+    s3_prefix?: string;
+    s3_force_path_style?: boolean;
+    s3_access_key_id?: string;
+    s3_secret_access_key?: string;
+  };
+  performance?: {
+    auto_tune?: boolean;
+    max_in_flight_tasks?: number;
+    planned_tasks?: number;
+    target_rows_per_task?: number;
+    target_file_bytes?: number;
+  };
+  iceberg?: {
+    enabled?: boolean;
+    engine?: IcebergEngine;
+    table?: string;
+    config_yaml?: string;
+    options?: JsonObject;
+    partition_keys?: string[];
+  };
+  consistency?: { mode?: ConsistencyMode };
+  worker_pool?: string;
+}
+
+/** POST /runs/validate: what the master derived from the request, plus the inferred schema. */
+export interface RunValidation {
+  ok: boolean;
+  source_engine: string;
+  source_mode: string;
+  available_workers: number;
+  type_mappings: Array<{ column: string; logical_type: string; storage_type: string; target_type: string; fallback?: boolean; reason?: string }>;
+  type_warnings: TypeWarning[];
+  derived: JsonObject;
+}
+
+export interface RunSubmitted {
+  run_id: string;
+  job_id: string;
+  status: string;
+  events_url: string;
+  run_url: string;
+}
+
+
+export interface WorkerIdentity {
+  id: string;
+  name: string;
+  hostname: string;
+  pool: string;
+  status: string;
+  cert_serial: string;
+  cert_not_after: string;
+  enrollment_token_id: string;
+  enrolled_at: string;
+  updated_at: string;
+  revoked_at?: string | null;
 }

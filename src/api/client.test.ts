@@ -1,162 +1,133 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  getAuthToken,
-  setAuthToken,
-  getCustomBackendUrl,
-  setCustomBackendUrl,
-  apiClient,
   ApiError,
+  MASTER_HEADER,
+  UNAUTHORIZED_EVENT,
+  apiClient,
+  apiRequest,
+  clearSession,
+  getLastMasterUrl,
+  getSession,
+  normalizeMasterUrl,
+  saveSession,
 } from './client';
+
+function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json', ...headers },
+  });
+}
 
 describe('api/client', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.restoreAllMocks();
   });
 
-  describe('Auth Token Management', () => {
-    it('returns empty string when no token is stored', () => {
-      expect(getAuthToken()).toBe('');
+  describe('normalizeMasterUrl', () => {
+    it('adds http:// and strips paths and trailing slashes', () => {
+      expect(normalizeMasterUrl('10.0.0.5:9100')).toBe('http://10.0.0.5:9100');
+      expect(normalizeMasterUrl(' https://master.example.com/ ')).toBe('https://master.example.com');
+      expect(normalizeMasterUrl('http://10.0.0.5:9100/api/v1')).toBe('http://10.0.0.5:9100');
     });
 
-    it('stores and retrieves token correctly', () => {
-      setAuthToken('secret-test-token-123');
-      expect(getAuthToken()).toBe('secret-test-token-123');
-    });
-
-    it('removes token when empty string is passed', () => {
-      setAuthToken('temp-token');
-      expect(getAuthToken()).toBe('temp-token');
-      setAuthToken('');
-      expect(getAuthToken()).toBe('');
+    it('rejects empty and non-http addresses', () => {
+      expect(() => normalizeMasterUrl('  ')).toThrow('Master address is required');
+      expect(() => normalizeMasterUrl('ftp://host')).toThrow('http:// or https://');
     });
   });
 
-  describe('Custom Backend URL Management', () => {
-    it('returns empty string when no custom backend is stored', () => {
-      expect(getCustomBackendUrl()).toBe('');
+  describe('session storage', () => {
+    it('needs both a master URL and a token', () => {
+      expect(getSession()).toBeNull();
+      saveSession({ masterUrl: 'http://m:9100', token: ' tok ' });
+      expect(getSession()).toEqual({ masterUrl: 'http://m:9100', token: 'tok' });
     });
 
-    it('stores valid HTTP and HTTPS URLs and strips trailing slashes', () => {
-      setCustomBackendUrl('http://192.168.1.100:8080/');
-      expect(getCustomBackendUrl()).toBe('http://192.168.1.100:8080');
-
-      setCustomBackendUrl('https://api.orabbit.data/');
-      expect(getCustomBackendUrl()).toBe('https://api.orabbit.data');
+    it('keeps the token in sessionStorage only', () => {
+      saveSession({ masterUrl: 'http://m:9100', token: 'tok' });
+      expect(Object.values({ ...localStorage })).not.toContain('tok');
     });
 
-    it('throws error when URL does not start with http:// or https://', () => {
-      expect(() => setCustomBackendUrl('ftp://invalid.com')).toThrow(
-        'Backend URL must start with http:// or https://'
-      );
-      expect(() => setCustomBackendUrl('localhost:8080')).toThrow(
-        'Backend URL must start with http:// or https://'
-      );
-    });
-
-    it('removes custom backend when empty string passed', () => {
-      setCustomBackendUrl('http://localhost:9000');
-      expect(getCustomBackendUrl()).toBe('http://localhost:9000');
-      setCustomBackendUrl('');
-      expect(getCustomBackendUrl()).toBe('');
+    it('forgets the token on logout but remembers the master address', () => {
+      saveSession({ masterUrl: 'http://m:9100', token: 'tok' });
+      clearSession();
+      expect(getSession()).toBeNull();
+      expect(getLastMasterUrl()).toBe('http://m:9100');
     });
   });
 
-  describe('apiClient HTTP requests', () => {
-    it('makes a request with correct default headers and parses JSON', async () => {
-      const mockResponseData = { status: 'healthy', version: '1.0.0' };
+  describe('apiClient', () => {
+    it('calls /api/v1 on this origin with the master header and bearer token', async () => {
+      saveSession({ masterUrl: 'http://m:9100', token: 'tok' });
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(jsonResponse([{ id: 'w1' }]));
 
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => mockResponseData,
-      } as Response);
+      const result = await apiClient('workers');
 
-      const result = await apiClient('/status');
+      expect(fetchSpy.mock.calls[0][0]).toBe('/api/v1/workers');
+      const headers = fetchSpy.mock.calls[0][1]?.headers as Headers;
+      expect(headers.get(MASTER_HEADER)).toBe('http://m:9100');
+      expect(headers.get('Authorization')).toBe('Bearer tok');
+      expect(headers.has('Content-Type')).toBe(false);
+      expect(result).toEqual([{ id: 'w1' }]);
+    });
 
-      expect(fetchSpy).toHaveBeenCalledWith(
-        '/status',
-        expect.objectContaining({
-          headers: expect.any(Headers),
-        })
+    it('keeps absolute paths such as /status unversioned', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(jsonResponse({}));
+      await apiClient('/status');
+      expect(fetchSpy.mock.calls[0][0]).toBe('/status');
+    });
+
+    it('exposes response headers for cursor paging', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValueOnce(jsonResponse([], 200, { 'X-Next-Cursor': 'abc' }));
+      const { headers } = await apiRequest('runs');
+      expect(headers.get('X-Next-Cursor')).toBe('abc');
+    });
+
+    it('parses the master error envelope, including field errors', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+        jsonResponse(
+          {
+            error: {
+              code: 'invalid_input',
+              message: 'invalid job',
+              details: { errors: [{ field: 'options_json.planned_tasks', error: 'must be a number' }] },
+              request_id: 'req-1',
+            },
+          },
+          400
+        )
       );
 
-      const calledHeaders = fetchSpy.mock.calls[0][1]?.headers as Headers;
-      expect(calledHeaders.get('Content-Type')).toBe('application/json');
-      expect(calledHeaders.has('Authorization')).toBe(false);
-      expect(result).toEqual(mockResponseData);
+      const err = (await apiClient('jobs').catch((e: unknown) => e)) as ApiError;
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.status).toBe(400);
+      expect(err.code).toBe('invalid_input');
+      expect(err.message).toBe('invalid job');
+      expect(err.requestId).toBe('req-1');
+      expect(err.fieldErrors).toEqual([{ field: 'options_json.planned_tasks', error: 'must be a number' }]);
     });
 
-    it('injects Authorization Bearer token header when token is stored', async () => {
-      setAuthToken('bearer-jwt-token-999');
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({ ok: true }),
-      } as Response);
-
-      await apiClient('/jobs');
-
-      const calledHeaders = fetchSpy.mock.calls[0][1]?.headers as Headers;
-      expect(calledHeaders.get('Authorization')).toBe('Bearer bearer-jwt-token-999');
+    it('reports proxy errors with a plain string message', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValueOnce(jsonResponse({ error: 'Master http://m:9100 is unreachable' }, 502));
+      await expect(apiClient('runs')).rejects.toThrow('Master http://m:9100 is unreachable');
     });
 
-    it('prepends custom backend URL when configured', async () => {
-      setCustomBackendUrl('http://10.0.0.5:8080');
+    it('announces a 401 so the app can return to the login page', async () => {
+      const listener = vi.fn();
+      window.addEventListener(UNAUTHORIZED_EVENT, listener);
+      vi.spyOn(global, 'fetch').mockResolvedValueOnce(jsonResponse({ error: { code: 'unauthorized', message: 'unauthorized' } }, 401));
 
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({}),
-      } as Response);
-
-      await apiClient('/api/workers');
-
-      expect(fetchSpy).toHaveBeenCalledWith('http://10.0.0.5:8080/api/workers', expect.anything());
+      await expect(apiClient('runs')).rejects.toBeInstanceOf(ApiError);
+      expect(listener).toHaveBeenCalledTimes(1);
+      window.removeEventListener(UNAUTHORIZED_EVENT, listener);
     });
 
-    it('returns empty object for 204 No Content response', async () => {
-      vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        status: 204,
-        headers: new Headers(),
-      } as Response);
-
-      const result = await apiClient('/runs/123/cancel', { method: 'POST' });
-      expect(result).toEqual({});
-    });
-
-    it('throws formatted error with status code and body message on HTTP failure', async () => {
-      vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-        text: async () => JSON.stringify({ error: 'Run not found' }),
-      } as Response);
-
-      await expect(apiClient('/runs/999')).rejects.toThrow('API Error [404]: Run not found');
-    });
-
-    it('throws an instance of ApiError containing status code', async () => {
-      vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        statusText: 'Unauthorized',
-        text: async () => JSON.stringify({ message: 'Invalid token' }),
-      } as Response);
-
-      try {
-        await apiClient('/api/secure');
-        expect.fail('Should have thrown');
-      } catch (err: any) {
-        expect(err.name).toBe('ApiError');
-        expect(err.status).toBe(401);
-        expect(err.message).toContain('API Error [401]: Invalid token');
-      }
+    it('returns undefined for 204 No Content', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValueOnce(new Response(null, { status: 204 }));
+      await expect(apiClient('jobs/1', { method: 'DELETE' })).resolves.toBeUndefined();
     });
   });
 });
