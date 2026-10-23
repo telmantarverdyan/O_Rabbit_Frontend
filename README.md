@@ -1,99 +1,49 @@
-# O_Rabbit Admin Dashboard & Web Console
+# O_Rabbit Admin UI
 
-Modern operator console and administrative dashboard for the **O_Rabbit** distributed lakehouse data ingestion engine.
+Web console for an **O_Rabbit** master: log in to a master, start and cancel runs, follow them live, and manage jobs, connections and workers.
 
-Built with **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, **Lucide Icons**, and **TanStack React Query**.
+Built with React 18, TypeScript, Vite, Tailwind CSS, lucide-react and TanStack React Query. All data comes from the master's `/api/v1` REST and SSE API (see `../O_Rabbit/docs/openapi.yaml`). There is no mock data.
 
----
+## Quick start
 
-## 🚀 Quick Start
-
-### 1. Install Dependencies
 ```bash
 npm install
-```
-
-### 2. Start Development Server
-```bash
 npm run dev
 ```
-The application will open on `http://localhost:5173`.
 
-### 3. Configure Master Backend Target
-By default, the Vite dev server proxies API calls and Server-Sent Events (SSE) to `http://localhost:8080`.
+Open `http://localhost:5173` and log in with:
 
-To point to a remote master (e.g. VPS or custom port), create a `.env` file or export `VITE_ORABBIT_BACKEND_URL`:
+| Field | Value |
+|---|---|
+| Master address | The master's `ORABBIT_HTTP_ADDR`, for example `http://10.0.0.5:9100` (default port `9100`) |
+| API token | The master's `ORABBIT_HTTP_AUTH_TOKEN` |
+
+The address is remembered in `localStorage`. The token is kept in `sessionStorage`, so closing the tab logs you out. If the master rejects the token (HTTP 401), the UI returns to the login page.
+
+`VITE_ORABBIT_BACKEND_URL` (see `.env.example`) only sets the address prefilled on the login page.
+
+## How requests reach the master
+
+The master sends no CORS headers, so the browser cannot call it directly. Instead the UI calls its own origin (`/api/v1/...`, `/status`) and adds an `X-ORabbit-Master` header with the address from the login. The `orabbit-master-proxy` plugin in `vite.config.ts` forwards those requests to that master, streaming responses so live events (SSE) work.
+
+This proxy runs in `npm run dev` and `npm run preview` only. The Nginx image in `Dockerfile` serves the static files and does **not** proxy to a master yet.
+
+## Views
+
+| Route | What it does | Master endpoints |
+|---|---|---|
+| `/login` | Connect to a master | `GET /status` |
+| `/` | Run counts, live workers, jobs, connections, recent runs | `GET /runs`, `/workers`, `/jobs`, `/connections` |
+| `/runs/new` | One-shot run with every option: source (engine, DSN, table/query, cursor, incremental, WHERE, columns, column types, record path, format), S3 target, Iceberg registration, performance, consistency, worker pool. **Validate** first or **Start run** directly. | `GET /source-engines`, `POST /runs/validate`, `POST /runs/submit` |
+| `/runs` | Paged run list, status filter, cancel | `GET /runs`, `POST /runs/{id}/cancel` |
+| `/runs/:id` | Progress, tasks, live events, diagnosis, artifacts; cancel, recover, retry/cancel Iceberg registration | `GET /runs/{id}` (+ `/progress`, `/events/stream`, `/diagnosis`, `/artifacts`), `POST /runs/{id}/cancel`, `/recover`, `/registration/retry`, `/registration/cancel` |
+| `/jobs` | Create, edit, delete and **run** stored jobs | `/jobs`, `POST /jobs/{id}/runs` |
+| `/connections` | Create, edit and delete source and S3 target connections | `/connections` |
+| `/workers` | Workers, enrollment tokens, worker identities (revoke) | `GET /workers`, `POST /workers/enrollment-tokens`, `GET /workers/identities`, `POST /workers/identities/{id}/revoke` |
+
+## Build and test
 
 ```bash
-# .env
-VITE_ORABBIT_BACKEND_URL=http://185.2.103.18:9100
+npm run build   # tsc type-check + production build to dist/
+npm test        # vitest
 ```
-
-Alternatively, you can configure the backend URL and Bearer Auth Token directly in the UI via the **Settings** or **Configure Token** button in the header.
-
----
-
-## 🏗️ Production Build & Container Deployment
-
-### Local Build
-To compile static assets for production:
-
-```bash
-npm run build
-```
-
-Compiled files are placed in `dist/`.
-
-### 🐳 Docker & Docker Compose Deployment
-Run the production Nginx container locally or in your Kubernetes / Docker cluster:
-
-```bash
-# Using Docker Compose
-docker compose up -d
-
-# Or build & run directly
-docker build -t orabbit-admin-ui .
-docker run -d -p 3000:80 --name orabbit-ui orabbit-admin-ui
-```
-
-Check health status:
-```bash
-curl http://localhost:3000/healthz
-# Returns: OK
-```
-
----
-
-## ✨ Features & Views
-
-- **📊 Overview Dashboard (`/`)**:
-  - High-level KPIs: Active Ingestion Runs, Connected Worker Fleet, Export Jobs, and Total Ingested GB / Rows.
-  - In-Flight Ingestion tracker with live task progress.
-  - Master Node state, PID, gRPC/HTTP ports, and Leadership status.
-
-- **▶️ Ingestion Runs (`/runs`)**:
-  - Searchable and filterable table of all historical and active runs.
-  - Interactive **Submit Ingestion Run** wizard with Auto-Tune Planner toggles.
-
-- **🔍 Run Details Inspector (`/runs/:id`)**:
-  - **Partition Tasks Breakdown**: View assigned worker nodes, cursor range bounds (`[lower..upper]`), rows read, and byte throughput.
-  - **Committed Parquet Objects**: Tabular listing of generated Parquet files, rolled parts (`part-000000-001.parquet`), exact byte sizes, and SHA-256 integrity digests.
-  - **Live SSE Event Console**: Streaming real-time log terminal showing gRPC worker heartbeats, auto-tune decisions, and commit manifests.
-  - **Run Actions**: Cancel in-flight runs, inspect raw metadata/manifest JSON.
-
-- **💼 Export Jobs (`/jobs`)**:
-  - Create and manage table/query export jobs with cursor columns, incremental sync flags, and lakehouse target definitions.
-  - Trigger one-click runs directly from any job.
-
-- **🗄️ Database & Storage Connections (`/connections`)**:
-  - Manage Source Database connectors: **PostgreSQL**, **Oracle**, **MSSQL**, **ClickHouse**, **MySQL**, **MariaDB**, **S3**, **Cassandra**, **Trino**, **SQLite**.
-  - Manage Target **S3 / MinIO** buckets and credentials.
-
-- **🖥️ Worker Fleet Telemetry (`/workers`)**:
-  - Real-time monitor of connected worker nodes with hostname, CPU core count, OS/Arch, Go runtime version, and animated heartbeat health indicators.
-
-- **🧊 Lakehouse & Datasets Explorer (`/datasets`)**:
-  - Browse S3 dataset prefixes, view authoritative `_state.json` High-Water Mark checkpoints, and copy ClickHouse / Altinity Ice queries.
-
-- **⚙️ System & Security Settings (`/settings`)**:
-  - Configure backend master endpoints, manage `ORABBIT_HTTP_AUTH_TOKEN`, and inspect live Prometheus telemetry from `/metrics`.
