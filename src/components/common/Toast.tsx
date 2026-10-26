@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { CheckCircle2, AlertTriangle, ShieldAlert, Info, X, Terminal } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -65,49 +65,23 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
-      {/* Terminal Toast Render Overlay */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2" aria-live="polite">
         {toasts.map((toast) => {
-          const typeStyles = {
-            success: 'border-emerald-500/50 bg-[#040d08]/95 text-emerald-300 shadow-terminal-glow',
-            error: 'border-rose-500/50 bg-[#0d0406]/95 text-rose-300 shadow-terminal-crimson',
-            warning: 'border-amber-500/50 bg-[#0d0a04]/95 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]',
-            info: 'border-cyan-500/50 bg-[#040a0d]/95 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.2)]',
-          };
-
-          const prefix = {
-            success: '[✓ OK]',
-            error: '[✖ ERR]',
-            warning: '[▲ WARN]',
-            info: '[i INFO]',
-          }[toast.type];
-
+          const Icon = { success: CheckCircle2, error: XCircle, warning: AlertTriangle, info: Info }[toast.type];
+          const tone = { success: 'text-accent', error: 'text-danger', warning: 'text-warn', info: 'text-info' }[toast.type];
           return (
             <div
               key={toast.id}
-              className={clsx(
-                'pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border backdrop-blur-md transition-all duration-300 font-mono text-xs',
-                typeStyles[toast.type]
-              )}
+              role={toast.type === 'error' ? 'alert' : 'status'}
+              className="pointer-events-auto flex animate-fade-in items-start gap-3 rounded-lg border border-line bg-card p-3.5 shadow-xl shadow-black/30"
             >
-              <span className="font-bold text-emerald-400 select-none text-[11px] mt-0.5">
-                {prefix}
-              </span>
-              <div className="flex-1 space-y-0.5 min-w-0">
-                {toast.title && (
-                  <h5 className="font-bold text-xs text-white tracking-wide">
-                    {toast.title}
-                  </h5>
-                )}
-                <p className="text-[11px] opacity-90 leading-relaxed break-words font-mono">
-                  {toast.message}
-                </p>
+              <Icon className={clsx('mt-0.5 h-4 w-4 flex-shrink-0', tone)} aria-hidden />
+              <div className="min-w-0 flex-1">
+                {toast.title && <p className="text-sm font-medium text-fg">{toast.title}</p>}
+                <p className="break-words text-sm text-fg-muted">{toast.message}</p>
               </div>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="text-emerald-500/60 hover:text-emerald-300 transition p-0.5 rounded"
-              >
-                <X className="h-3.5 w-3.5" />
+              <button onClick={() => removeToast(toast.id)} className="cursor-pointer rounded p-0.5 text-fg-subtle hover:text-fg" aria-label="Dismiss notification">
+                <X className="h-4 w-4" />
               </button>
             </div>
           );

@@ -42,7 +42,7 @@ export const Jobs: React.FC = () => {
         subtitle="Stored export definitions that use saved connections. Start one with Run."
         actions={<Button variant="cyber" icon={Plus} onClick={() => setEditing('new')}>New job</Button>}
       />
-      <Panel title={`${jobs.length} jobs`} actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={jobsQuery.isFetching} onClick={() => jobsQuery.refetch()}>Refresh</Button>}>
+      <Panel title={`${jobs.length} jobs`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={jobsQuery.isFetching} onClick={() => jobsQuery.refetch()}>Refresh</Button>}>
         <QueryState isLoading={jobsQuery.isLoading} error={jobsQuery.error} onRetry={() => jobsQuery.refetch()} isEmpty={!jobs.length} emptyMessage="No jobs yet. One-shot runs from New Run also create a job.">
           <div className="overflow-x-auto">
             <table className={tableClass}>
@@ -58,10 +58,10 @@ export const Jobs: React.FC = () => {
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-emerald-950/20">
+                  <tr key={job.id} className="transition-colors hover:bg-raised/40">
                     <td className={tdClass}>
-                      <div className="text-emerald-200">{job.name}</div>
-                      <div className="text-[10px] text-emerald-600">{job.id}</div>
+                      <div className="text-fg">{job.name}</div>
+                      <div className="font-mono text-xs text-fg-subtle">{job.id}</div>
                     </td>
                     <td className={tdClass}>{connectionName(job.source_connection_id)} → {connectionName(job.target_connection_id)}</td>
                     <td className={tdClass}>{[job.target_namespace, job.target_table].filter(Boolean).join('.') || '—'}</td>
@@ -179,7 +179,7 @@ const JobFormModal: React.FC<{ job: Job | null; connections: Connection[]; onClo
           />
         </div>
         {mutation.error && (
-          <div role="alert" className="sm:col-span-2 rounded-lg border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-300 break-words">
+          <div role="alert" className="sm:col-span-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger break-words">
             <p>{mutation.error instanceof ApiError ? mutation.error.message : errorMessage(mutation.error)}</p>
             {fieldErrors.length > 0 && (
               <ul className="mt-1 list-disc pl-4">
@@ -227,7 +227,7 @@ const RunJobModal: React.FC<{ job: Job; onClose: () => void }> = ({ job, onClose
           placeholder={'{\n  "enabled": true,\n  "engine": "rest-go",\n  "table": "analytics.orders"\n}'}
           helperText="Leave empty to use the job's stored settings."
         />
-        {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+        {mutation.error && <p role="alert" className="break-words text-sm text-danger">{errorMessage(mutation.error)}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit" variant="cyber" icon={Play} loading={mutation.isPending}>Start run</Button>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Download, Play, ShieldCheck, Upload } from 'lucide-react';
 import { fetchSourceEngines } from '@/api/connections';
@@ -16,7 +16,9 @@ import { EMPTY_FORM, RunForm, TRI_OPTIONS, TriState, buildRequest, parseRunFile,
 export const NewRun: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const [form, setForm] = useState<RunForm>(EMPTY_FORM);
+  const location = useLocation();
+  // Run from file hands over a parsed one-shot form through router state.
+  const [form, setForm] = useState<RunForm>(() => (location.state as { form?: RunForm } | null)?.form ?? EMPTY_FORM);
   const [formError, setFormError] = useState<unknown>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -217,7 +219,7 @@ export const NewRun: React.FC = () => {
             </Panel>
 
             <Panel title="2 · Target (S3)">
-              <p className="mb-4 text-[11px] text-emerald-500/60">Leave empty to use the master&apos;s configured S3 defaults.</p>
+              <p className="mb-4 text-xs text-fg-muted">Leave empty to use the master&apos;s configured S3 defaults.</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input label="S3 endpoint" value={form.s3Endpoint} onChange={(e) => set('s3Endpoint', e.target.value)} placeholder="http://minio:9000" />
                 <Input label="S3 region" value={form.s3Region} onChange={(e) => set('s3Region', e.target.value)} placeholder="us-east-1" />
@@ -297,12 +299,12 @@ export const NewRun: React.FC = () => {
                 </Button>
                 {validation && !formError && <ValidationSummary validation={validation} />}
                 {formError != null && (
-                  <div role="alert" className="space-y-1 rounded-lg border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-300 break-words">
+                  <div role="alert" className="space-y-1 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger break-words">
                     <p>{formError instanceof ApiError ? formError.message : errorMessage(formError)}</p>
                     {fieldErrors.length > 0 && (
                       <ul className="list-disc pl-4">
                         {fieldErrors.map((f) => (
-                          <li key={`${f.field}-${f.error}`}><span className="text-rose-200">{f.field}</span>: {f.error}</li>
+                          <li key={`${f.field}-${f.error}`}><span className="text-danger">{f.field}</span>: {f.error}</li>
                         ))}
                       </ul>
                     )}
@@ -311,7 +313,7 @@ export const NewRun: React.FC = () => {
               </div>
             </Panel>
             <Panel title="Request preview">
-              <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap break-all text-[11px] text-emerald-300/80">{preview}</pre>
+              <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap break-all text-xs text-fg-muted">{preview}</pre>
             </Panel>
           </div>
         </form>
@@ -326,37 +328,37 @@ const ValidationSummary: React.FC<{ validation: RunValidation }> = ({ validation
     const v = derived[key];
     return v === undefined || v === null || v === '' ? null : (
       <li key={key}>
-        <span className="text-emerald-500/70">{key}: </span>
+        <span className="text-fg-muted">{key}: </span>
         {typeof v === 'object' ? JSON.stringify(v) : String(v)}
       </li>
     );
   };
   return (
-    <div className="space-y-2 text-xs text-emerald-200">
-      <p className="flex items-center gap-1.5 text-emerald-300">
+    <div className="space-y-2 text-xs text-fg">
+      <p className="flex items-center gap-1.5 text-accent">
         <CheckCircle2 className="h-3.5 w-3.5" /> Valid. Ready to start.
       </p>
       {validation.available_workers === 0 && (
-        <p className="text-amber-300">No active workers right now: the run will wait until one connects.</p>
+        <p className="text-warn">No active workers right now: the run will wait until one connects.</p>
       )}
-      <ul className="space-y-0.5 text-[11px] break-all">
-        <li><span className="text-emerald-500/70">available_workers: </span>{validation.available_workers}</li>
+      <ul className="space-y-0.5 text-xs break-all">
+        <li><span className="text-fg-muted">available_workers: </span>{validation.available_workers}</li>
         {['job_name', 'target_connection_name', 'target_prefix', 'iceberg_table', 'write_mode'].map(show)}
       </ul>
       {(validation.type_warnings?.length ?? 0) > 0 && (
-        <ul className="list-disc pl-4 text-[11px] text-amber-300">
+        <ul className="list-disc pl-4 text-xs text-warn">
           {validation.type_warnings.map((w, i) => <li key={i}>{w.column ? `${w.column}: ` : ''}{w.message ?? JSON.stringify(w)}</li>)}
         </ul>
       )}
       {(validation.type_mappings?.length ?? 0) > 0 && (
-        <details className="text-[11px]">
-          <summary className="cursor-pointer text-emerald-400">Schema ({validation.type_mappings.length} columns)</summary>
+        <details className="text-xs">
+          <summary className="cursor-pointer text-accent">Schema ({validation.type_mappings.length} columns)</summary>
           <table className="mt-2 w-full">
             <tbody>
               {validation.type_mappings.map((m) => (
-                <tr key={m.column} className={m.fallback ? 'text-amber-300' : ''}>
+                <tr key={m.column} className={m.fallback ? 'text-warn' : ''}>
                   <td className="pr-2">{m.column}</td>
-                  <td className="pr-2 text-emerald-500/80">{m.logical_type}</td>
+                  <td className="pr-2 text-fg-muted">{m.logical_type}</td>
                   <td>{m.target_type}</td>
                 </tr>
               ))}

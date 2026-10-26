@@ -11,17 +11,16 @@ import { Login } from './pages/Login';
 const Overview = lazy(() => import('./pages/Overview').then((m) => ({ default: m.Overview })));
 const Runs = lazy(() => import('./pages/Runs').then((m) => ({ default: m.Runs })));
 const NewRun = lazy(() => import('./pages/NewRun').then((m) => ({ default: m.NewRun })));
+const RunFromFile = lazy(() => import('./pages/RunFromFile').then((m) => ({ default: m.RunFromFile })));
 const RunDetail = lazy(() => import('./pages/RunDetail').then((m) => ({ default: m.RunDetail })));
 const Jobs = lazy(() => import('./pages/Jobs').then((m) => ({ default: m.Jobs })));
 const Connections = lazy(() => import('./pages/Connections').then((m) => ({ default: m.Connections })));
 const Workers = lazy(() => import('./pages/Workers').then((m) => ({ default: m.Workers })));
 
 const PageFallback: React.FC = () => (
-  <div className="flex items-center justify-center min-h-[300px] text-slate-500 font-mono text-xs">
-    <div className="flex items-center gap-2">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-      <span>Loading view...</span>
-    </div>
+  <div className="flex min-h-[300px] items-center justify-center gap-2 text-sm text-fg-subtle">
+    <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" aria-hidden />
+    Loading…
   </div>
 );
 
@@ -64,6 +63,7 @@ export const App: React.FC = () => {
                   <Route path="/" element={<Overview />} />
                   <Route path="/runs" element={<Runs />} />
                   <Route path="/runs/new" element={<NewRun />} />
+                  <Route path="/runs/file" element={<RunFromFile />} />
                   <Route path="/runs/:id" element={<RunDetail />} />
                   <Route path="/jobs" element={<Jobs />} />
                   <Route path="/connections" element={<Connections />} />

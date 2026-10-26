@@ -2,58 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens (RGB channels): green-phosphor terminal matching the logo. */
+:root {
+  --canvas: 2 5 4;          /* #020504 CRT black */
+  --card: 6 14 10;          /* #060E0A panels */
+  --raised: 12 28 21;       /* #0C1C15 hover, table headers */
+  --line: 27 77 54;         /* #1B4D36 borders */
+  --fg: 200 255 220;        /* #C8FFDC bright phosphor text */
+  --fg-muted: 110 200 150;  /* #6EC896 secondary text (8:1 on card) */
+  --fg-subtle: 75 150 108;  /* #4B966C hints (4.9:1 on card) */
+  --accent: 0 255 102;      /* #00FF66 logo green */
+  --accent-strong: 102 255 153;
+  --accent-fg: 1 20 9;      /* text on inverse-video buttons */
+  --danger: 255 95 86;      /* #FF5F56 */
+  --warn: 255 176 0;        /* #FFB000 amber phosphor */
+  --info: 51 225 255;       /* #33E1FF */
+  color-scheme: dark;
+}
+
 @layer base {
   body {
-    @apply bg-[#020504] text-emerald-100 font-mono antialiased selection:bg-emerald-500/30 selection:text-emerald-300;
-    background-image: 
-      radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 75%),
-      linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
-    background-size: 100% 100%, 32px 32px, 32px 32px;
+    @apply bg-canvas font-sans text-sm text-fg antialiased;
+    background-image: radial-gradient(ellipse at 50% 0%, rgb(var(--accent) / 0.07), transparent 70%);
+    background-attachment: fixed;
+  }
+  /* CRT scanlines: purely decorative, never intercept clicks. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 2px, rgb(0 0 0 / 0.16) 3px);
+  }
+  ::selection {
+    @apply bg-accent/30 text-fg;
+  }
+  /* Visible keyboard focus everywhere, never on mouse click. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/70 ring-offset-2 ring-offset-canvas;
+  }
+  code,
+  kbd,
+  pre {
+    @apply font-mono;
   }
 }
 
-/* Custom terminal scrollbars */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #020504;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #112d20;
-  border-radius: 2px;
+  background: rgb(var(--line));
+  border-radius: 8px;
+  border: 2px solid rgb(var(--canvas));
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #10b981;
+  background: rgb(var(--fg-subtle));
 }
 
-/* Terminal HUD and glow utilities */
-.glow-emerald {
-  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6), 0 0 20px rgba(0, 255, 102, 0.2);
+@layer utilities {
+  /* Phosphor glow for headings, values and the accent. */
+  .glow {
+    text-shadow: 0 0 6px rgb(var(--accent) / 0.55), 0 0 18px rgb(var(--accent) / 0.2);
+  }
+  .glow-box {
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.15), 0 0 18px -4px rgb(var(--accent) / 0.35);
+  }
+  /* Blinking block cursor after page titles. */
+  .cursor-block::after {
+    content: '';
+    display: inline-block;
+    width: 0.55em;
+    height: 1em;
+    margin-left: 0.2em;
+    vertical-align: -0.12em;
+    background: rgb(var(--accent));
+    box-shadow: 0 0 8px rgb(var(--accent) / 0.7);
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
 }
-
-.glow-box-emerald {
-  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.2), inset 0 0 10px -3px rgba(16, 185, 129, 0.05);
-}
-
-.glow-box-cyan {
-  box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.2), inset 0 0 10px -3px rgba(6, 182, 212, 0.05);
-}
-
-.glow-box-crimson {
-  box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.2), inset 0 0 10px -3px rgba(239, 68, 68, 0.05);
-}
-
-.terminal-card {
-  @apply bg-[#060e0a]/90 border border-[#133023] rounded-xl backdrop-blur-md transition-all duration-200 hover:border-emerald-500/40 hover:shadow-terminal-sm;
-}
-
-.terminal-header {
-  @apply border-b border-[#133023] bg-[#040907]/90 px-4 py-3;
-}
-

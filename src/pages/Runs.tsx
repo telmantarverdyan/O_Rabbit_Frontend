@@ -68,15 +68,15 @@ export const RunsTable: React.FC<{ runs: Run[] }> = ({ runs }) => {
         </thead>
         <tbody>
           {runs.map((run) => (
-            <tr key={run.id} className="hover:bg-emerald-950/20">
+            <tr key={run.id} className="transition-colors hover:bg-raised/40">
               <td className={tdClass}>
-                <Link to={`/runs/${run.id}`} className="text-emerald-300 hover:underline" title={run.id}>{shortId(run.id)}</Link>
+                <Link to={`/runs/${run.id}`} className="text-accent hover:underline" title={run.id}>{shortId(run.id)}</Link>
               </td>
               <td className={tdClass}><StatusBadge status={run.status} size="sm" /></td>
-              <td className={`${tdClass} text-emerald-500/80`} title={run.job_id}>{shortId(run.job_id)}</td>
+              <td className={`${tdClass} text-fg-muted`} title={run.job_id}>{shortId(run.job_id)}</td>
               <td className={`${tdClass} whitespace-nowrap`}>{formatTime(run.started_at)}</td>
               <td className={tdClass}>{formatDuration(run.started_at, run.finished_at)}</td>
-              <td className={`${tdClass} max-w-xs truncate text-rose-300/80`} title={run.error_summary ?? ''}>{run.error_summary ?? ''}</td>
+              <td className={`${tdClass} max-w-xs truncate text-danger`} title={run.error_summary ?? ''}>{run.error_summary ?? ''}</td>
               <td className={`${tdClass} whitespace-nowrap text-right space-x-1`}>
                 {!ACTIVE_RUN_STATUSES.has(run.status) && run.job_id && (
                   <Button
@@ -139,7 +139,7 @@ export const Runs: React.FC = () => {
         }
       />
       <Panel
-        title={`Page ${cursors.length}`}
+        title={`Page ${cursors.length}`} flush
         actions={
           <>
             <Select

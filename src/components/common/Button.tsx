@@ -3,11 +3,26 @@ import { clsx } from 'clsx';
 import { LucideIcon } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  /** `cyber` and `outline` are kept as aliases of `primary` and `secondary`. */
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'cyber';
   size?: 'sm' | 'md' | 'lg';
   icon?: LucideIcon;
   loading?: boolean;
 }
+
+const variantStyles = {
+  // Inverse video, like a selected item on a green-screen terminal.
+  primary: 'bg-accent text-accent-fg hover:bg-accent-strong font-semibold uppercase tracking-wide glow-box',
+  secondary: 'bg-canvas text-accent border border-line hover:border-accent/70 hover:bg-raised',
+  danger: 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20',
+  ghost: 'text-fg-muted hover:text-accent hover:bg-raised',
+} as const;
+
+const sizeStyles = {
+  sm: 'h-8 px-2.5 text-xs gap-1.5',
+  md: 'h-9 px-3.5 text-sm gap-2',
+  lg: 'h-11 px-5 text-sm gap-2',
+} as const;
 
 export const Button: React.FC<ButtonProps> = ({
   children,
@@ -17,47 +32,32 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   className,
   disabled,
+  type = 'button',
   ...props
 }) => {
-  const variantStyles = {
-    primary:
-      'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/40 hover:border-emerald-400 shadow-terminal-sm hover:shadow-terminal-glow font-mono font-semibold',
-    cyber:
-      'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-black font-mono font-bold border border-emerald-400 shadow-terminal-glow',
-    secondary:
-      'bg-surface-subtle hover:bg-surface-border text-emerald-300 hover:text-emerald-100 border border-surface-border hover:border-emerald-500/40 shadow-sm font-mono',
-    danger:
-      'bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 hover:text-rose-200 border border-rose-600/40 hover:border-rose-500 shadow-terminal-crimson font-mono',
-    ghost:
-      'bg-transparent hover:bg-surface-subtle/80 text-emerald-400/80 hover:text-emerald-200 border border-transparent font-mono',
-    outline:
-      'bg-transparent border border-surface-border hover:border-emerald-500/50 text-emerald-400 hover:text-emerald-300 font-mono',
-  };
-
-  const sizeStyles = {
-    sm: 'px-2.5 py-1 text-xs gap-1.5',
-    md: 'px-3.5 py-1.5 text-xs sm:text-sm gap-2',
-    lg: 'px-5 py-2.5 text-sm sm:text-base gap-2.5',
-  };
-
+  const resolved = variant === 'cyber' ? 'primary' : variant === 'outline' ? 'secondary' : variant;
+  // toArray drops null/undefined/booleans; an empty string marks an icon-only button.
+  const hasText = React.Children.toArray(children).some((c) => c !== '');
   return (
     <button
+      type={type}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={clsx(
-        'inline-flex items-center justify-center rounded-lg transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none disabled:active:scale-100 focus:outline-none focus:ring-1 focus:ring-emerald-400/50',
-        variantStyles[variant],
+        'inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+        variantStyles[resolved],
         sizeStyles[size],
+        !hasText && (size === 'sm' ? 'w-8 px-0' : 'w-9 px-0'),
         className
       )}
       {...props}
     >
       {loading ? (
-        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
       ) : (
-        Icon && <Icon className="h-3.5 w-3.5" />
+        Icon && <Icon className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} aria-hidden />
       )}
-      <span>{children}</span>
+      {hasText && <span>{children}</span>}
     </button>
   );
 };
-

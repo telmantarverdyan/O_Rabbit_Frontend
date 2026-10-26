@@ -35,7 +35,7 @@ export const Connections: React.FC = () => {
         subtitle="Saved sources and S3 targets used by jobs. Secrets are encrypted by the master and never shown again."
         actions={<Button variant="cyber" icon={Plus} onClick={() => setEditing('new')}>New connection</Button>}
       />
-      <Panel title={`${connections.length} connections`} actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={query.isFetching} onClick={() => query.refetch()}>Refresh</Button>}>
+      <Panel title={`${connections.length} connections`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={query.isFetching} onClick={() => query.refetch()}>Refresh</Button>}>
         <QueryState isLoading={query.isLoading} error={query.error} onRetry={() => query.refetch()} isEmpty={!connections.length} emptyMessage="No connections yet.">
           <div className="overflow-x-auto">
             <table className={tableClass}>
@@ -51,14 +51,14 @@ export const Connections: React.FC = () => {
               </thead>
               <tbody>
                 {connections.map((c) => (
-                  <tr key={c.id} className="hover:bg-emerald-950/20">
+                  <tr key={c.id} className="transition-colors hover:bg-raised/40">
                     <td className={tdClass}>
-                      <div className="text-emerald-200">{c.name}</div>
-                      <div className="text-[10px] text-emerald-600">{c.id}</div>
+                      <div className="text-fg">{c.name}</div>
+                      <div className="font-mono text-xs text-fg-subtle">{c.id}</div>
                     </td>
                     <td className={tdClass}>{c.kind}</td>
                     <td className={tdClass}>{c.engine}</td>
-                    <td className={`${tdClass} max-w-sm truncate text-emerald-500/80`} title={JSON.stringify(c.metadata_json)}>{c.metadata_json ? JSON.stringify(c.metadata_json) : '—'}</td>
+                    <td className={`${tdClass} max-w-sm truncate text-fg-muted`} title={JSON.stringify(c.metadata_json)}>{c.metadata_json ? JSON.stringify(c.metadata_json) : '—'}</td>
                     <td className={`${tdClass} whitespace-nowrap`}>{formatTime(c.updated_at)}</td>
                     <td className={`${tdClass} whitespace-nowrap text-right`}>
                       <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing(c)} aria-label={`Edit ${c.name}`}>{''}</Button>
@@ -151,7 +151,7 @@ const ConnectionFormModal: React.FC<{ connection: Connection | null; onClose: ()
           helperText={connection ? 'Leave empty to keep the stored secret.' : 'Encrypted at rest with ORABBIT_MASTER_KEY.'}
           autoComplete="off"
         />
-        {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+        {mutation.error && <p role="alert" className="break-words text-sm text-danger">{errorMessage(mutation.error)}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={mutation.isPending}>{connection ? 'Save' : 'Create'}</Button>

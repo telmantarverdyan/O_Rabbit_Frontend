@@ -43,7 +43,7 @@ export const Overview: React.FC = () => {
         <MetricCard title="Jobs" value={value(jobsQuery, jobsQuery.data?.length ?? 0)} icon={Briefcase} color="amber" />
         <MetricCard title="Connections" value={value(connectionsQuery, connectionsQuery.data?.length ?? 0)} icon={Database} color="slate" />
       </div>
-      <Panel title="Recent runs" actions={<Link to="/runs" className="text-xs text-emerald-400 hover:underline">All runs →</Link>}>
+      <Panel title="Recent runs" flush actions={<Link to="/runs" className="text-xs text-accent hover:underline">All runs →</Link>}>
         <QueryState isLoading={runsQuery.isLoading} error={runsQuery.error} onRetry={() => runsQuery.refetch()} isEmpty={!runs.length} emptyMessage="No runs yet.">
           <RunsTable runs={runs.slice(0, 10)} />
         </QueryState>

@@ -1,5 +1,6 @@
 import { ConsistencyMode, IcebergEngine, JsonObject, RunSubmitRequest } from '@/api/types';
 import { parseJsonField, splitList } from '@/utils/format';
+import { parseYaml } from '@/utils/simpleYaml';
 
 /** '' means "leave it to the master's default", so the field is not sent. */
 export type TriState = '' | 'true' | 'false';
@@ -290,13 +291,19 @@ export function cliFileToRequest(file: Record<string, unknown>): { request: RunS
 
 export type RunFileKind = 'one-shot' | 'cli';
 
-/** Reads a JSON run file in either format. Throws a readable Error for anything else. */
+/** Reads a run file (YAML or JSON) in either format. Throws a readable Error for anything else. */
 export function parseRunFile(text: string): { form: RunForm; kind: RunFileKind; ignored: string[] } {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('The file is empty.');
   let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch (err) {
-    throw new Error(`Not valid JSON: ${(err as Error).message}. YAML run files are not supported yet; convert them to JSON.`);
+  if (trimmed.startsWith('{')) {
+    try {
+      data = JSON.parse(trimmed);
+    } catch (err) {
+      throw new Error(`Not valid JSON: ${(err as Error).message}`);
+    }
+  } else {
+    data = parseYaml(text);
   }
   if (!isObject(data) || !isObject(data.source)) throw new Error('A run file needs a "source" section.');
   // The CLI file has a "job" section and names its source; the one-shot format has neither.

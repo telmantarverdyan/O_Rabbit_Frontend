@@ -4,44 +4,40 @@ import { describe, it, expect } from 'vitest';
 import { StatusBadge } from './StatusBadge';
 
 describe('StatusBadge', () => {
-  it('renders SUCCEEDED status with correct text and indicator', () => {
+  it('shows the status as a readable label', () => {
     render(<StatusBadge status="SUCCEEDED" />);
-    const badge = screen.getByText('SUCCEEDED');
-    expect(badge).toBeInTheDocument();
-    expect(screen.getByText('✓')).toBeInTheDocument();
+    expect(screen.getByText('Succeeded')).toBeInTheDocument();
   });
 
-  it('renders RUNNING status with pulse animation indicator', () => {
-    const { container } = render(<StatusBadge status="RUNNING" />);
-    expect(screen.getByText('RUNNING')).toBeInTheDocument();
-    expect(screen.getByText('●')).toBeInTheDocument();
-    expect(container.firstChild).toHaveClass('animate-pulse');
-  });
-
-  it('renders FAILED status with failure indicator and rose styling', () => {
-    const { container } = render(<StatusBadge status="FAILED" />);
-    expect(screen.getByText('FAILED')).toBeInTheDocument();
-    expect(screen.getByText('✖')).toBeInTheDocument();
-    expect(container.firstChild).toHaveClass('text-rose-300');
-  });
-
-  it('renders PENDING status with amber styling', () => {
-    const { container } = render(<StatusBadge status="PENDING" />);
-    expect(screen.getByText('PENDING')).toBeInTheDocument();
-    expect(screen.getByText('▲')).toBeInTheDocument();
-    expect(container.firstChild).toHaveClass('text-amber-300');
-  });
-
-  it('normalizes lowercase status values to uppercase', () => {
+  it('normalizes the case of the status', () => {
     render(<StatusBadge status="healthy" />);
-    expect(screen.getByText('HEALTHY')).toBeInTheDocument();
+    expect(screen.getByText('Healthy')).toBeInTheDocument();
   });
 
-  it('applies custom size classes correctly', () => {
-    const { container: smContainer } = render(<StatusBadge status="ACTIVE" size="sm" />);
-    expect(smContainer.firstChild).toHaveClass('text-[10px]');
+  it.each([
+    ['SUCCEEDED', 'text-accent'],
+    ['RUNNING', 'text-info'],
+    ['PENDING', 'text-warn'],
+    ['FAILED', 'text-danger'],
+    ['CANCELED', 'text-fg-muted'],
+  ])('uses the matching tone for %s', (status, toneClass) => {
+    const { container } = render(<StatusBadge status={status} />);
+    expect(container.firstChild).toHaveClass(toneClass);
+  });
 
-    const { container: lgContainer } = render(<StatusBadge status="ACTIVE" size="lg" />);
-    expect(lgContainer.firstChild).toHaveClass('px-3');
+  it('pulses the dot only for active states, and only when motion is allowed', () => {
+    const { container: running } = render(<StatusBadge status="RUNNING" />);
+    expect(running.querySelector('[aria-hidden]')).toHaveClass('motion-safe:animate-pulse');
+
+    const { container: done } = render(<StatusBadge status="SUCCEEDED" />);
+    expect(done.querySelector('[aria-hidden]')).not.toHaveClass('motion-safe:animate-pulse');
+  });
+
+  it('applies size classes', () => {
+    const { container: sm } = render(<StatusBadge status="ACTIVE" size="sm" />);
+    expect(sm.firstChild).toHaveClass('px-2');
+
+    const { container: lg } = render(<StatusBadge status="ACTIVE" size="lg" />);
+    expect(lg.firstChild).toHaveClass('px-3', 'text-sm');
   });
 });

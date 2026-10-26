@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Terminal } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -44,40 +44,19 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="fixed inset-0 bg-black/85 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-      <div
-        className={`relative w-full ${maxWidthClasses[maxWidth]} overflow-hidden rounded-xl border border-emerald-500/40 bg-[#050c08] shadow-terminal-glow transition-all z-10 flex flex-col max-h-[90vh] font-mono`}
-      >
-        {/* Terminal Window Header Bar */}
-        <div className="flex items-center justify-between border-b border-surface-border bg-[#030805] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 mr-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 cursor-pointer" onClick={onClose} />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-emerald-200 tracking-wide flex items-center gap-1.5">
-                <span className="text-emerald-400">$</span>
-                {title}
-              </h3>
-              {subtitle && <p className="text-[11px] text-emerald-500/60 mt-0.5">{subtitle}</p>}
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className={`relative z-10 flex max-h-[90vh] w-full ${maxWidthClasses[maxWidth]} animate-fade-in flex-col overflow-hidden rounded-xl border border-line bg-card shadow-2xl shadow-black/40`}>
+        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+          <div className="min-w-0">
+            <h3 id="modal-title" className="text-base font-semibold text-fg">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-xs text-fg-muted">{subtitle}</p>}
           </div>
-          <button
-            onClick={onClose}
-            className="rounded p-1 text-emerald-500/60 hover:bg-emerald-950/60 hover:text-emerald-300 transition text-xs flex items-center gap-1"
-            title="Press Esc to close"
-          >
-            <span className="text-[10px] hidden sm:inline">[ESC]</span>
+          <button onClick={onClose} className="-mr-1 cursor-pointer rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-raised hover:text-fg" aria-label="Close dialog">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="overflow-y-auto p-5 sm:p-6 space-y-4">{children}</div>
+        <div className="space-y-4 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );

@@ -20,9 +20,9 @@ import { LogConsole } from '@/components/common/LogConsole';
 import { MetricCard } from '@/components/common/MetricCard';
 import { Modal } from '@/components/common/Modal';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { PageTitle, Panel, QueryState, TextArea, tableClass, tdClass, thClass } from '@/components/common/QueryState';
+import { PageTitle, Panel, QueryState, TextArea, rowClass, tableClass, tdClass, thClass } from '@/components/common/QueryState';
 import { useToast } from '@/components/common/Toast';
-import { TaskProgressChart } from '@/components/charts/TaskProgressChart';
+import { TaskProgressBar } from '@/components/common/TaskProgressBar';
 import { ACTIVE_RUN_STATUSES, formatBytes, formatDuration, formatNumber, formatTime, shortId } from '@/utils/format';
 import { useCancelRun, useRunAgain } from './Runs';
 
@@ -34,8 +34,8 @@ const RECOVERY_ACTIONS: Array<{ label: string; value: RecoveryAction }> = [
 
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="min-w-0">
-    <dt className="text-[10px] uppercase tracking-wider text-emerald-500/70">{label}</dt>
-    <dd className="truncate text-xs text-emerald-100" title={typeof children === 'string' ? children : undefined}>{children || '—'}</dd>
+    <dt className="text-xs text-fg-muted">{label}</dt>
+    <dd className="mt-0.5 truncate text-sm text-fg" title={typeof children === 'string' ? children : undefined}>{children || '—'}</dd>
   </div>
 );
 
@@ -90,7 +90,7 @@ export const RunDetail: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Link to="/runs" className="inline-flex items-center gap-1 text-xs text-emerald-500 hover:text-emerald-300">
+      <Link to="/runs" className="inline-flex items-center gap-1 text-xs text-fg-muted hover:text-fg">
         <ArrowLeft className="h-3.5 w-3.5" /> All runs
       </Link>
 
@@ -99,7 +99,7 @@ export const RunDetail: React.FC = () => {
           <>
             <PageTitle
               title={`Run ${shortId(run.id)}`}
-              subtitle={run.id}
+              subtitle={<span className="font-mono text-xs">{run.id}</span>}
               actions={
                 <>
                   <StatusBadge status={run.status} size="lg" />
@@ -128,7 +128,7 @@ export const RunDetail: React.FC = () => {
             />
 
             {run.error_summary && (
-              <div role="alert" className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-xs text-rose-300">
+              <div role="alert" className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
                 <p className="font-semibold">
                   {run.failure_phase ? `Failed during ${run.failure_phase}` : 'Error'}
                   {run.failure_class ? ` · ${run.failure_class}` : ''}
@@ -137,7 +137,7 @@ export const RunDetail: React.FC = () => {
               </div>
             )}
             {run.operator_action_required && (
-              <div className="rounded-lg border border-amber-500/40 bg-amber-950/30 p-4 text-xs text-amber-300">
+              <div className="rounded-lg border border-warn/30 bg-warn/10 p-4 text-sm text-warn">
                 This run needs an operator. See the diagnosis below for the suggested action.
               </div>
             )}
@@ -151,7 +151,7 @@ export const RunDetail: React.FC = () => {
 
             <div className="grid gap-6 lg:grid-cols-3">
               <Panel title="Details" className="lg:col-span-2">
-                <dl className="grid gap-4 sm:grid-cols-3">
+                <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
                   <Field label="Job">{run.job_id}</Field>
                   <Field label="Dataset">{run.dataset_key}</Field>
                   <Field label="Correlation ID">{run.correlation_id}</Field>
@@ -166,7 +166,7 @@ export const RunDetail: React.FC = () => {
                   <Field label="Snapshot / metadata">{run.registered_snapshot_or_metadata_id}</Field>
                 </dl>
                 {(run.type_warnings?.length ?? 0) > 0 && (
-                  <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-[11px] text-amber-300">
+                  <div className="mt-4 rounded-lg border border-warn/30 bg-warn/10 p-3 text-sm text-warn">
                     <p className="font-semibold">Type warnings</p>
                     <ul className="mt-1 list-disc pl-4">
                       {run.type_warnings!.map((w, i) => (
@@ -193,7 +193,7 @@ export const RunDetail: React.FC = () => {
 
               <Panel title="Task progress">
                 {p ? (
-                  <TaskProgressChart succeeded={p.tasks_succeeded} running={p.tasks_running} failed={p.tasks_failed} pending={p.tasks_pending} />
+                  <TaskProgressBar succeeded={p.tasks_succeeded} running={p.tasks_running} failed={p.tasks_failed} pending={p.tasks_pending} canceled={p.tasks_canceled} />
                 ) : (
                   <QueryState isLoading={progressQuery.isLoading} error={progressQuery.error}>{null}</QueryState>
                 )}
@@ -205,13 +205,13 @@ export const RunDetail: React.FC = () => {
                 {diagnosisQuery.data && (
                   <div className="space-y-2 text-xs">
                     <p>
-                      <span className="text-emerald-500/70">Suggested next action: </span>
-                      <span className="text-emerald-100">{diagnosisQuery.data.suggested_next_action || 'none'}</span>
+                      <span className="text-fg-muted">Suggested next action: </span>
+                      <span className="text-fg">{diagnosisQuery.data.suggested_next_action || 'none'}</span>
                     </p>
                     {diagnosisQuery.data.last_classified_error && (
-                      <p><span className="text-emerald-500/70">Last error: </span><span className="text-rose-300">{diagnosisQuery.data.last_classified_error}</span></p>
+                      <p><span className="text-fg-muted">Last error: </span><span className="text-danger">{diagnosisQuery.data.last_classified_error}</span></p>
                     )}
-                    <p className="text-emerald-500/70">
+                    <p className="text-fg-muted">
                       Task counts:{' '}
                       {Object.entries(diagnosisQuery.data.task_counts ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ') || 'none'}
                     </p>
@@ -220,7 +220,7 @@ export const RunDetail: React.FC = () => {
               </QueryState>
             </Panel>
 
-            <Panel title={`Tasks (${tasks.length})`}>
+            <Panel title="Tasks" description={`${tasks.length} planned`} flush>
               <QueryState isLoading={false} error={null} isEmpty={!tasks.length} emptyMessage="No tasks planned yet.">
                 <div className="overflow-x-auto">
                   <table className={tableClass}>
@@ -238,7 +238,7 @@ export const RunDetail: React.FC = () => {
                     </thead>
                     <tbody>
                       {tasks.map((t) => (
-                        <tr key={t.id}>
+                        <tr key={t.id} className={rowClass}>
                           <td className={tdClass}>{t.task_index}</td>
                           <td className={tdClass}><StatusBadge status={t.status} size="sm" /></td>
                           <td className={tdClass} title={t.worker_id ?? ''}>{t.worker_id ?? '—'}</td>
@@ -246,7 +246,7 @@ export const RunDetail: React.FC = () => {
                           <td className={tdClass}>{formatBytes(t.bytes_written)}</td>
                           <td className={tdClass}>{t.attempt_count}</td>
                           <td className={tdClass}>{formatDuration(t.started_at, t.finished_at)}</td>
-                          <td className={`${tdClass} max-w-xs break-words text-rose-300/80`}>{t.error_message ?? ''}</td>
+                          <td className={`${tdClass} max-w-xs break-words text-danger`}>{t.error_message ?? ''}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -256,15 +256,15 @@ export const RunDetail: React.FC = () => {
             </Panel>
 
             <div>
-              <div className="mb-2 flex items-center justify-between text-[11px] text-emerald-500/70">
+              <div className="mb-2 flex items-center justify-between text-xs text-fg-muted">
                 <span>Live events: {sse.connectionState.toLowerCase()}{sse.retryCount ? ` (retry ${sse.retryCount})` : ''}</span>
-                {sse.error && <span className="text-amber-400">{sse.error}</span>}
+                {sse.error && <span className="text-warn">{sse.error}</span>}
               </div>
               <LogConsole events={events} connected={sse.connected} runId={run.id} />
             </div>
 
             {!active && (
-              <Panel title="Artifacts">
+              <Panel title="Artifacts" description="Committed Parquet objects" flush>
                 <QueryState isLoading={artifactsQuery.isLoading} error={artifactsQuery.error} isEmpty={!artifactsQuery.data?.objects.length} emptyMessage="No committed Parquet objects.">
                   <div className="overflow-x-auto">
                     <table className={tableClass}>
@@ -278,7 +278,7 @@ export const RunDetail: React.FC = () => {
                       </thead>
                       <tbody>
                         {artifactsQuery.data?.objects.map((o, i) => (
-                          <tr key={i}>
+                          <tr key={i} className={rowClass}>
                             <td className={`${tdClass} break-all`}>{String(o.object_key ?? o.key ?? o.path ?? JSON.stringify(o))}</td>
                             <td className={tdClass}>{o.row_count != null ? formatNumber(Number(o.row_count)) : '—'}</td>
                             <td className={tdClass}>{o.byte_size != null ? formatBytes(Number(o.byte_size)) : '—'}</td>
@@ -331,7 +331,7 @@ const RecoverModal: React.FC<ActionModalProps> = ({ runId, isOpen, onClose, onDo
       >
         <Select label="Action" value={action} onChange={(e) => setAction(e.target.value as RecoveryAction)} options={RECOVERY_ACTIONS} />
         <Input label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="commit is overdue" helperText="Stored in the audit log." required />
-        {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+        {mutation.error && <p role="alert" className="break-words text-sm text-danger">{errorMessage(mutation.error)}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>Close</Button>
           <Button type="submit" icon={LifeBuoy} loading={mutation.isPending} disabled={!reason.trim()}>Run action</Button>
@@ -362,7 +362,7 @@ const RegistrationRetryModal: React.FC<ActionModalProps> = ({ runId, isOpen, onC
         }}
       >
         <TextArea label="Override config YAML (optional)" rows={6} value={configYaml} onChange={(e) => setConfigYaml(e.target.value)} helperText="Leave empty to retry with the stored configuration." />
-        {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+        {mutation.error && <p role="alert" className="break-words text-sm text-danger">{errorMessage(mutation.error)}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>Close</Button>
           <Button type="submit" icon={RotateCcw} loading={mutation.isPending}>Retry</Button>

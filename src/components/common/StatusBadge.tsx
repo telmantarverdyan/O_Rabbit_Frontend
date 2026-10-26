@@ -8,79 +8,57 @@ interface StatusBadgeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
+type Tone = 'success' | 'active' | 'pending' | 'failed' | 'neutral';
+
+function toneOf(status: string): Tone {
+  switch (status) {
+    case 'SUCCEEDED':
+    case 'COMPLETE':
+    case 'HEALTHY':
+    case 'ACTIVE':
+      return 'success';
+    case 'RUNNING':
+    case 'REGISTERING':
+    case 'COMMITTING':
+      return 'active';
+    case 'PLANNING':
+    case 'PENDING':
+      return 'pending';
+    case 'FAILED':
+    case 'QUARANTINED':
+    case 'DEAD':
+    case 'DEGRADED':
+    case 'REVOKED':
+      return 'failed';
+    default:
+      return 'neutral';
+  }
+}
+
+const toneStyles: Record<Tone, { badge: string; dot: string }> = {
+  success: { badge: 'bg-accent/10 text-accent ring-accent/25', dot: 'bg-accent' },
+  active: { badge: 'bg-info/10 text-info ring-info/25', dot: 'bg-info motion-safe:animate-pulse' },
+  pending: { badge: 'bg-warn/10 text-warn ring-warn/25', dot: 'bg-warn' },
+  failed: { badge: 'bg-danger/10 text-danger ring-danger/25', dot: 'bg-danger' },
+  neutral: { badge: 'bg-raised text-fg-muted ring-line', dot: 'bg-fg-subtle' },
+};
+
+/** Status pill: the label carries the meaning, the color only reinforces it. */
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className, size = 'md' }) => {
   const norm = (status || 'UNKNOWN').toUpperCase();
-
-  const getStyle = () => {
-    switch (norm) {
-      case 'SUCCEEDED':
-      case 'COMPLETE':
-      case 'HEALTHY':
-      case 'ACTIVE':
-        return 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.15)]';
-      case 'RUNNING':
-      case 'REGISTERING':
-      case 'COMMITTING':
-        return 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.25)] animate-pulse';
-      case 'PLANNING':
-      case 'PENDING':
-        return 'bg-amber-950/60 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
-      case 'FAILED':
-      case 'QUARANTINED':
-      case 'DEAD':
-      case 'DEGRADED':
-      case 'FIRING':
-        return 'bg-rose-950/60 text-rose-300 border-rose-500/40 shadow-[0_0_12px_rgba(239,68,68,0.25)] animate-pulse';
-      case 'CANCELED':
-      case 'PAUSED':
-        return 'bg-slate-900/60 text-slate-400 border-slate-700/50';
-      default:
-        return 'bg-emerald-950/30 text-emerald-400/80 border-emerald-800/40';
-    }
-  };
-
-  const getIndicator = () => {
-    switch (norm) {
-      case 'SUCCEEDED':
-      case 'COMPLETE':
-      case 'HEALTHY':
-      case 'ACTIVE':
-        return '✓';
-      case 'RUNNING':
-      case 'REGISTERING':
-      case 'COMMITTING':
-        return '●';
-      case 'PLANNING':
-      case 'PENDING':
-        return '▲';
-      case 'FAILED':
-      case 'QUARANTINED':
-      case 'DEAD':
-      case 'FIRING':
-        return '✖';
-      default:
-        return '■';
-    }
-  };
-
-  const sizeClasses = {
-    sm: 'px-1.5 py-0.5 text-[10px] gap-1',
-    md: 'px-2 py-0.5 text-xs gap-1.5',
-    lg: 'px-3 py-1 text-xs gap-2',
-  };
-
+  const tone = toneStyles[toneOf(norm)];
+  const label = norm.charAt(0) + norm.slice(1).toLowerCase();
   return (
     <span
       className={clsx(
-        'inline-flex items-center font-mono font-medium rounded-md border tracking-wider uppercase',
-        getStyle(),
-        sizeClasses[size],
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-medium ring-1 ring-inset',
+        tone.badge,
+        size === 'sm' ? 'px-2 py-0.5 text-xs' : size === 'lg' ? 'px-3 py-1 text-sm' : 'px-2.5 py-0.5 text-xs',
         className
       )}
     >
-      <span className="font-mono text-[10px] opacity-80">{getIndicator()}</span>
-      <span>{norm}</span>
+      <span className={clsx('h-1.5 w-1.5 rounded-full', tone.dot)} aria-hidden />
+      {label}
     </span>
   );
 };
-

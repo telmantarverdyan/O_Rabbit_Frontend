@@ -41,7 +41,7 @@ export const Workers: React.FC = () => {
       />
 
       <Panel
-        title={`${workers.length} workers`}
+        title={`${workers.length} workers`} flush
         actions={
           <>
             <Checkbox label="Include inactive" checked={showAll} onChange={setShowAll} />
@@ -77,7 +77,7 @@ export const Workers: React.FC = () => {
         </QueryState>
       </Panel>
 
-      <Panel title={`Enrolled identities (${identities.length})`} actions={<Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => identitiesQuery.refetch()}>Refresh</Button>}>
+      <Panel title={`Enrolled identities (${identities.length})`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => identitiesQuery.refetch()}>Refresh</Button>}>
         <QueryState isLoading={identitiesQuery.isLoading} error={identitiesQuery.error} isEmpty={!identities.length} emptyMessage="No master-issued worker identities.">
           <div className="overflow-x-auto">
             <table className={tableClass}>
@@ -94,7 +94,7 @@ export const Workers: React.FC = () => {
               <tbody>
                 {identities.map((i) => (
                   <tr key={i.id}>
-                    <td className={tdClass}>{i.name}<div className="text-[10px] text-emerald-600">{i.id}</div></td>
+                    <td className={tdClass}>{i.name}<div className="font-mono text-xs text-fg-subtle">{i.id}</div></td>
                     <td className={tdClass}>{i.hostname}</td>
                     <td className={tdClass}>{i.pool || '—'}</td>
                     <td className={tdClass}><StatusBadge status={i.revoked_at ? 'REVOKED' : i.status} size="sm" /></td>
@@ -146,8 +146,8 @@ const EnrollmentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     <Modal isOpen onClose={onClose} title="Create worker enrollment token" subtitle="A new worker uses it once to get its certificate.">
       {token ? (
         <div className="space-y-3">
-          <p className="text-xs text-amber-300">Copy it now. The master stores only a hash and cannot show it again.</p>
-          <pre className="break-all rounded-lg border border-surface-border bg-terminal-dark p-3 text-xs text-emerald-200">{token}</pre>
+          <p className="text-xs text-warn">Copy it now. The master stores only a hash and cannot show it again.</p>
+          <pre className="break-all rounded-lg border border-line bg-canvas font-mono p-3 text-xs text-fg">{token}</pre>
           <div className="flex justify-end gap-2">
             <Button
               variant="secondary"
@@ -172,7 +172,7 @@ const EnrollmentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <Input label="Valid for (minutes)" type="number" min={1} value={ttlMinutes} onChange={(e) => setTtlMinutes(e.target.value)} />
             <Input label="Max uses" type="number" min={1} value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
           </div>
-          {mutation.error && <p role="alert" className="text-xs text-rose-300 break-words">{errorMessage(mutation.error)}</p>}
+          {mutation.error && <p role="alert" className="break-words text-sm text-danger">{errorMessage(mutation.error)}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
             <Button type="submit" icon={KeyRound} loading={mutation.isPending}>Create</Button>
