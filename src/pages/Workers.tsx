@@ -50,25 +50,25 @@ export const Workers: React.FC = () => {
         }
       >
         <QueryState isLoading={workersQuery.isLoading} error={workersQuery.error} onRetry={() => workersQuery.refetch()} isEmpty={!workers.length} emptyMessage="No workers have connected to this master.">
-          <div className="overflow-x-auto">
+          <div>
             <table className={tableClass}>
               <thead>
                 <tr>
                   <th className={thClass}>Worker</th>
-                  <th className={thClass}>Status</th>
-                  <th className={thClass}>Address</th>
-                  <th className={thClass}>Last heartbeat</th>
-                  <th className={thClass}>Instances</th>
+                  <th className={`${thClass} w-32`}>Status</th>
+                  <th className={`${thClass} hidden md:table-cell`}>Address</th>
+                  <th className={`${thClass} hidden w-48 sm:table-cell`}>Last heartbeat</th>
+                  <th className={`${thClass} hidden w-24 text-right lg:table-cell`}>Instances</th>
                 </tr>
               </thead>
               <tbody>
                 {workers.map((w) => (
                   <tr key={w.id}>
-                    <td className={tdClass}>{w.id}</td>
+                    <td className={`${tdClass} truncate font-mono text-xs`} title={w.id}>{w.id}</td>
                     <td className={tdClass}><StatusBadge status={w.status} size="sm" /></td>
-                    <td className={tdClass}>{w.addr || '—'}</td>
-                    <td className={`${tdClass} whitespace-nowrap`}>{formatTime(w.last_heartbeat)}</td>
-                    <td className={tdClass}>{w.instances?.length ?? 0}</td>
+                    <td className={`${tdClass} hidden truncate font-mono text-xs md:table-cell`}>{w.addr || '—'}</td>
+                    <td className={`${tdClass} hidden text-fg-muted sm:table-cell`}>{formatTime(w.last_heartbeat)}</td>
+                    <td className={`${tdClass} hidden text-right tabular-nums lg:table-cell`}>{w.instances?.length ?? 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -79,26 +79,26 @@ export const Workers: React.FC = () => {
 
       <Panel title={`Enrolled identities (${identities.length})`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => identitiesQuery.refetch()}>Refresh</Button>}>
         <QueryState isLoading={identitiesQuery.isLoading} error={identitiesQuery.error} isEmpty={!identities.length} emptyMessage="No master-issued worker identities.">
-          <div className="overflow-x-auto">
+          <div>
             <table className={tableClass}>
               <thead>
                 <tr>
                   <th className={thClass}>Name</th>
-                  <th className={thClass}>Host</th>
-                  <th className={thClass}>Pool</th>
-                  <th className={thClass}>Status</th>
-                  <th className={thClass}>Certificate expires</th>
-                  <th className={thClass} />
+                  <th className={`${thClass} hidden md:table-cell`}>Host</th>
+                  <th className={`${thClass} hidden w-28 lg:table-cell`}>Pool</th>
+                  <th className={`${thClass} w-32`}>Status</th>
+                  <th className={`${thClass} hidden w-48 sm:table-cell`}>Certificate expires</th>
+                  <th className={`${thClass} w-28`}><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {identities.map((i) => (
                   <tr key={i.id}>
                     <td className={tdClass}>{i.name}<div className="font-mono text-xs text-fg-subtle">{i.id}</div></td>
-                    <td className={tdClass}>{i.hostname}</td>
-                    <td className={tdClass}>{i.pool || '—'}</td>
+                    <td className={`${tdClass} hidden truncate md:table-cell`}>{i.hostname}</td>
+                    <td className={`${tdClass} hidden lg:table-cell`}>{i.pool || '—'}</td>
                     <td className={tdClass}><StatusBadge status={i.revoked_at ? 'REVOKED' : i.status} size="sm" /></td>
-                    <td className={`${tdClass} whitespace-nowrap`}>{formatTime(i.cert_not_after)}</td>
+                    <td className={`${tdClass} hidden text-fg-muted sm:table-cell`}>{formatTime(i.cert_not_after)}</td>
                     <td className={`${tdClass} text-right`}>
                       {!i.revoked_at && (
                         <Button

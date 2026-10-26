@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { clsx } from 'clsx';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, RotateCw, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileUp, Plus, RefreshCw, RotateCw, XCircle } from 'lucide-react';
 import { cancelRun, fetchRuns, startJobRun } from '@/api/runs';
 import { errorMessage } from '@/api/client';
 import { Run } from '@/api/types';
 import { Button } from '@/components/common/Button';
-import { Select } from '@/components/common/Input';
+import { fetchJobs } from '@/api/jobs';
+import { RunsDashboard } from '@/components/dashboard/RunsDashboard';
+import { countByStatus, STATUS_STYLE } from '@/utils/runStats';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { PageTitle, Panel, QueryState, tableClass, tdClass, thClass } from '@/components/common/QueryState';
+import { PageTitle, Panel, QueryState, rowClass, tableClass, tdClass, thClass } from '@/components/common/QueryState';
 import { useToast } from '@/components/common/Toast';
 import { ACTIVE_RUN_STATUSES, formatDuration, formatTime, shortId } from '@/utils/format';
 
@@ -49,74 +52,81 @@ export function useRunAgain() {
   });
 }
 
-export const RunsTable: React.FC<{ runs: Run[] }> = ({ runs }) => {
+/** Runs table that fits its container: fixed layout, secondary columns hide on narrow screens. */
+export const RunsTable: React.FC<{ runs: Run[]; jobNames?: Record<string, string> }> = ({ runs, jobNames = {} }) => {
   const cancel = useCancelRun();
   const runAgain = useRunAgain();
   return (
-    <div className="overflow-x-auto">
-      <table className={tableClass}>
-        <thead>
-          <tr>
-            <th className={thClass}>Run</th>
-            <th className={thClass}>Status</th>
-            <th className={thClass}>Job</th>
-            <th className={thClass}>Started</th>
-            <th className={thClass}>Duration</th>
-            <th className={thClass}>Error</th>
-            <th className={thClass} />
+    <table className={tableClass}>
+      <thead>
+        <tr>
+          <th className={`${thClass} w-24 sm:w-28`}>Run</th>
+          <th className={`${thClass} w-32`}>Status</th>
+          <th className={`${thClass} hidden md:table-cell`}>Job</th>
+          <th className={`${thClass} hidden w-40 lg:table-cell`}>Started</th>
+          <th className={`${thClass} hidden w-24 xl:table-cell`}>Duration</th>
+          <th className={`${thClass} hidden xl:table-cell`}>Error</th>
+          <th className={`${thClass} w-16 text-right sm:w-32`}><span className="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {runs.map((run) => (
+          <tr key={run.id} className={rowClass}>
+            <td className={tdClass}>
+              <Link to={`/runs/${run.id}`} className="font-mono text-xs text-accent hover:underline" title={run.id}>{shortId(run.id)}</Link>
+            </td>
+            <td className={tdClass}><StatusBadge status={run.status} size="sm" /></td>
+            <td className={`${tdClass} hidden truncate md:table-cell`} title={run.job_id}>{jobNames[run.job_id] ?? <span className="font-mono text-xs text-fg-muted">{shortId(run.job_id)}</span>}</td>
+            <td className={`${tdClass} hidden text-fg-muted lg:table-cell`}>{formatTime(run.started_at)}</td>
+            <td className={`${tdClass} hidden tabular-nums xl:table-cell`}>{formatDuration(run.started_at, run.finished_at)}</td>
+            <td className={`${tdClass} hidden truncate text-danger xl:table-cell`} title={run.error_summary ?? ''}>{run.error_summary ?? ''}</td>
+            <td className={`${tdClass} text-right`}>
+              {!ACTIVE_RUN_STATUSES.has(run.status) && run.job_id && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={RotateCw}
+                  aria-label={`Run job of ${shortId(run.id)} again`}
+                  title="Run again"
+                  loading={runAgain.isPending && runAgain.variables === run.job_id}
+                  onClick={() => runAgain.mutate(run.job_id)}
+                >
+                  {''}
+                </Button>
+              )}
+              {ACTIVE_RUN_STATUSES.has(run.status) && run.status !== 'COMMITTING' && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={XCircle}
+                  loading={cancel.isPending && cancel.variables === run.id}
+                  aria-label={`Cancel run ${shortId(run.id)}`}
+                  onClick={() => {
+                    if (window.confirm(`Cancel run ${run.id}?`)) cancel.mutate(run.id);
+                  }}
+                >
+                  <span className="hidden sm:inline">Cancel</span>
+                </Button>
+              )}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {runs.map((run) => (
-            <tr key={run.id} className="transition-colors hover:bg-raised/40">
-              <td className={tdClass}>
-                <Link to={`/runs/${run.id}`} className="text-accent hover:underline" title={run.id}>{shortId(run.id)}</Link>
-              </td>
-              <td className={tdClass}><StatusBadge status={run.status} size="sm" /></td>
-              <td className={`${tdClass} text-fg-muted`} title={run.job_id}>{shortId(run.job_id)}</td>
-              <td className={`${tdClass} whitespace-nowrap`}>{formatTime(run.started_at)}</td>
-              <td className={tdClass}>{formatDuration(run.started_at, run.finished_at)}</td>
-              <td className={`${tdClass} max-w-xs truncate text-danger`} title={run.error_summary ?? ''}>{run.error_summary ?? ''}</td>
-              <td className={`${tdClass} whitespace-nowrap text-right space-x-1`}>
-                {!ACTIVE_RUN_STATUSES.has(run.status) && run.job_id && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={RotateCw}
-                    title="Start a new run of the same job"
-                    loading={runAgain.isPending && runAgain.variables === run.job_id}
-                    onClick={() => runAgain.mutate(run.job_id)}
-                  >
-                    Run again
-                  </Button>
-                )}
-                {ACTIVE_RUN_STATUSES.has(run.status) && run.status !== 'COMMITTING' && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    icon={XCircle}
-                    loading={cancel.isPending && cancel.variables === run.id}
-                    onClick={() => {
-                      if (window.confirm(`Cancel run ${run.id}?`)) cancel.mutate(run.id);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   );
 };
+
+export function useJobNames(): Record<string, string> {
+  const { data } = useQuery({ queryKey: ['jobs'], queryFn: fetchJobs });
+  return useMemo(() => Object.fromEntries((data ?? []).map((j) => [j.id, j.name])), [data]);
+}
 
 export const Runs: React.FC = () => {
   // A stack of cursors: the last entry is the current page, '' is the first page.
   const [cursors, setCursors] = useState<string[]>(['']);
   const [status, setStatus] = useState('');
   const cursor = cursors[cursors.length - 1];
+  const jobNames = useJobNames();
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['runs', cursor],
@@ -125,37 +135,61 @@ export const Runs: React.FC = () => {
   });
 
   // The master has no status filter, so this filters the loaded page only.
-  const runs = (data?.runs ?? []).filter((r) => !status || r.status === status);
+  const pageRuns = data?.runs ?? [];
+  const counts = countByStatus(pageRuns);
+  const runs = pageRuns.filter((r) => !status || r.status === status);
 
   return (
     <div className="space-y-6">
       <PageTitle
         title="Runs"
-        subtitle="Every export run on this master, newest first."
-        actions={
-          <Link to="/runs/new">
-            <Button variant="cyber" icon={Plus}>New run</Button>
-          </Link>
-        }
-      />
-      <Panel
-        title={`Page ${cursors.length}`} flush
+        subtitle="Run analytics and every export run on this master, newest first."
         actions={
           <>
-            <Select
-              aria-label="Filter by status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              options={STATUSES.map((s) => ({ label: s || 'All statuses', value: s }))}
-            />
-            <Button variant="ghost" size="sm" icon={RefreshCw} loading={isFetching} onClick={() => refetch()}>Refresh</Button>
-            <Button variant="outline" size="sm" icon={ChevronLeft} disabled={cursors.length === 1} onClick={() => setCursors((c) => c.slice(0, -1))}>Newer</Button>
-            <Button variant="outline" size="sm" icon={ChevronRight} disabled={!data?.nextCursor} onClick={() => setCursors((c) => [...c, data!.nextCursor])}>Older</Button>
+            <Link to="/runs/file"><Button variant="secondary" icon={FileUp}>From file</Button></Link>
+            <Link to="/runs/new"><Button icon={Plus}>New run</Button></Link>
+          </>
+        }
+      />
+
+      <RunsDashboard jobNames={jobNames} />
+
+      <Panel
+        title="All runs"
+        description={`Page ${cursors.length} · ${PAGE_SIZE} per page`}
+        flush
+        actions={
+          <>
+            <Button variant="ghost" size="sm" icon={RefreshCw} loading={isFetching} onClick={() => refetch()} aria-label="Refresh runs">{''}</Button>
+            <Button variant="secondary" size="sm" icon={ChevronLeft} disabled={cursors.length === 1} onClick={() => setCursors((c) => c.slice(0, -1))}>Newer</Button>
+            <Button variant="secondary" size="sm" icon={ChevronRight} disabled={!data?.nextCursor} onClick={() => setCursors((c) => [...c, data!.nextCursor])}>Older</Button>
           </>
         }
       >
-        <QueryState isLoading={isLoading} error={error} onRetry={() => refetch()} isEmpty={!runs.length} emptyMessage={status ? `No ${status} runs on this page.` : 'No runs yet. Start one from "New run".'}>
-          <RunsTable runs={runs} />
+        <div className="flex flex-wrap gap-1.5 border-b border-line px-5 py-3" role="radiogroup" aria-label="Filter by status">
+          {STATUSES.map((s) => {
+            const n = s ? counts[s] ?? 0 : pageRuns.length;
+            return (
+              <button
+                key={s || 'all'}
+                type="button"
+                role="radio"
+                aria-checked={status === s}
+                onClick={() => setStatus(s)}
+                className={clsx(
+                  'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-xs transition-colors',
+                  status === s ? 'border-accent/60 bg-accent/10 text-accent' : 'border-line text-fg-muted hover:border-fg-subtle hover:text-fg'
+                )}
+              >
+                {s && <span className={clsx('h-1.5 w-1.5 rounded-full', STATUS_STYLE[s]?.dot)} aria-hidden />}
+                {s ? STATUS_STYLE[s]?.label ?? s : 'All'}
+                <span className="tabular-nums text-fg-subtle">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+        <QueryState isLoading={isLoading} error={error} onRetry={() => refetch()} isEmpty={!runs.length} emptyMessage={status ? `No ${STATUS_STYLE[status]?.label.toLowerCase() ?? status} runs on this page.` : 'No runs yet. Start one from "New run".'}>
+          <RunsTable runs={runs} jobNames={jobNames} />
         </QueryState>
       </Panel>
     </div>

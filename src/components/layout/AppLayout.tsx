@@ -13,7 +13,7 @@ export const AppLayout: React.FC = () => {
         <Sidebar isMobileOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <Header onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)} />
-          <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+          <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-7xl space-y-6 animate-fade-in">
               <Outlet />
             </div>

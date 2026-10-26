@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Database, FileText, LifeBuoy, RefreshCw, RotateCcw, RotateCw, Rows3, Stethoscope, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Clock, Database, FileText, LifeBuoy, RefreshCw, RotateCcw, RotateCw, Rows3, XCircle } from 'lucide-react';
 import {
   cancelRegistration,
   fetchRun,
@@ -24,7 +24,7 @@ import { PageTitle, Panel, QueryState, TextArea, rowClass, tableClass, tdClass, 
 import { useToast } from '@/components/common/Toast';
 import { TaskProgressBar } from '@/components/common/TaskProgressBar';
 import { ACTIVE_RUN_STATUSES, formatBytes, formatDuration, formatNumber, formatTime, shortId } from '@/utils/format';
-import { useCancelRun, useRunAgain } from './Runs';
+import { useCancelRun, useJobNames, useRunAgain } from './Runs';
 
 const RECOVERY_ACTIONS: Array<{ label: string; value: RecoveryAction }> = [
   { label: 'reconcile_commit: re-check a stuck COMMITTING run', value: 'reconcile_commit' },
@@ -32,10 +32,10 @@ const RECOVERY_ACTIONS: Array<{ label: string; value: RecoveryAction }> = [
   { label: 'reconciliation_retry: retry commit reconciliation', value: 'reconciliation_retry' },
 ];
 
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+const Field: React.FC<{ label: string; children: React.ReactNode; title?: string }> = ({ label, children, title }) => (
   <div className="min-w-0">
     <dt className="text-xs text-fg-muted">{label}</dt>
-    <dd className="mt-0.5 truncate text-sm text-fg" title={typeof children === 'string' ? children : undefined}>{children || '—'}</dd>
+    <dd className="mt-0.5 truncate text-sm text-fg" title={title ?? (typeof children === 'string' ? children : undefined)}>{children || '—'}</dd>
   </div>
 );
 
@@ -45,6 +45,7 @@ export const RunDetail: React.FC = () => {
   const queryClient = useQueryClient();
   const cancel = useCancelRun();
   const runAgain = useRunAgain();
+  const jobNames = useJobNames();
   const [recoverOpen, setRecoverOpen] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState(false);
 
@@ -87,6 +88,14 @@ export const RunDetail: React.FC = () => {
   });
 
   const p = progressQuery.data?.progress;
+  // Progress counters come from worker reports; after commit, the verified artifact
+  // counters can be the only non-zero numbers, so show whichever is larger.
+  const sum = (pick: (t: (typeof tasks)[number]) => number) => tasks.reduce((acc, t) => acc + (pick(t) || 0), 0);
+  const artifactRows = sum((t) => t.artifact_rows);
+  const artifactCount = sum((t) => t.artifact_count);
+  const rowsTotal = Math.max(p?.rows_read ?? 0, sum((t) => t.rows_read), artifactRows);
+  const bytesTotal = Math.max(p?.bytes_written ?? 0, sum((t) => t.bytes_written), sum((t) => t.artifact_bytes));
+  const hasRegistration = !!run && (!!run.catalog_status || !!run.registration_id || run.registration_attempt > 0 || !!run.registration_error_class);
 
   return (
     <div className="space-y-6">
@@ -144,109 +153,134 @@ export const RunDetail: React.FC = () => {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard title="Tasks" value={p ? `${p.tasks_succeeded}/${p.tasks_total}` : `${tasks.length}`} subtitle={p ? `${p.tasks_running} running · ${p.tasks_failed} failed` : undefined} icon={Rows3} />
-              <MetricCard title="Rows read" value={formatNumber(p?.rows_read ?? tasks.reduce((s, t) => s + t.rows_read, 0))} icon={Database} color="cyan" />
-              <MetricCard title="Written" value={formatBytes(p?.bytes_written ?? tasks.reduce((s, t) => s + t.bytes_written, 0))} icon={FileText} color="purple" />
-              <MetricCard title="Duration" value={formatDuration(run.started_at, run.finished_at)} subtitle={p ? `${p.workers_active} active workers` : undefined} icon={RotateCcw} color="amber" />
+              <MetricCard title="Rows" value={formatNumber(rowsTotal)} subtitle={artifactRows > (p?.rows_read ?? 0) ? 'from committed files' : 'read from source'} icon={Database} />
+              <MetricCard title="Written" value={formatBytes(bytesTotal)} subtitle={`${artifactCount} Parquet file${artifactCount === 1 ? '' : 's'}`} icon={FileText} />
+              <MetricCard title="Duration" value={formatDuration(run.started_at, run.finished_at)} subtitle={p ? `${p.workers_active} active workers` : undefined} icon={Clock} />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
+            <div className="grid items-start gap-6 lg:grid-cols-3">
               <Panel title="Details" className="lg:col-span-2">
-                <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
-                  <Field label="Job">{run.job_id}</Field>
-                  <Field label="Dataset">{run.dataset_key}</Field>
-                  <Field label="Correlation ID">{run.correlation_id}</Field>
+                <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <Field label="Job">
+                    <Link to="/jobs" className="text-accent hover:underline" title={run.job_id}>{jobNames[run.job_id] ?? shortId(run.job_id)}</Link>
+                  </Field>
+                  <Field label="Dataset" title={run.dataset_key}>{run.dataset_key}</Field>
+                  <Field label="Correlation ID" title={run.correlation_id}>{run.correlation_id}</Field>
                   <Field label="Started">{formatTime(run.started_at)}</Field>
                   <Field label="Finished">{formatTime(run.finished_at)}</Field>
                   <Field label="Readiness">{run.readiness}</Field>
                   <Field label="Data status">{run.data_status}</Field>
-                  <Field label="Catalog status">{run.catalog_status}</Field>
                   <Field label="Commit phase">{run.commit_phase}</Field>
-                  <Field label="Registration attempts">{String(run.registration_attempt ?? 0)}</Field>
-                  <Field label="Registration error">{run.registration_error_class}</Field>
-                  <Field label="Snapshot / metadata">{run.registered_snapshot_or_metadata_id}</Field>
+                  <Field label="Catalog status">{run.catalog_status}</Field>
+                  {hasRegistration && (
+                    <>
+                      <Field label="Registration attempts">{String(run.registration_attempt ?? 0)}</Field>
+                      <Field label="Registration error">{run.registration_error_class}</Field>
+                      <Field label="Snapshot / metadata" title={run.registered_snapshot_or_metadata_id}>{run.registered_snapshot_or_metadata_id}</Field>
+                    </>
+                  )}
                 </dl>
-                {(run.type_warnings?.length ?? 0) > 0 && (
-                  <div className="mt-4 rounded-lg border border-warn/30 bg-warn/10 p-3 text-sm text-warn">
-                    <p className="font-semibold">Type warnings</p>
-                    <ul className="mt-1 list-disc pl-4">
-                      {run.type_warnings!.map((w, i) => (
-                        <li key={i}>{w.column ? `${w.column}: ` : ''}{w.message ?? JSON.stringify(w)}</li>
-                      ))}
-                    </ul>
+                {hasRegistration && (
+                  <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+                    <Button variant="secondary" size="sm" icon={RotateCcw} onClick={() => setRegistrationOpen(true)}>Retry Iceberg registration</Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={XCircle}
+                      loading={cancelRegistrationMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm('Cancel the Iceberg registration for this run?')) cancelRegistrationMutation.mutate();
+                      }}
+                    >
+                      Cancel registration
+                    </Button>
                   </div>
                 )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" icon={RotateCcw} onClick={() => setRegistrationOpen(true)}>Retry Iceberg registration</Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={XCircle}
-                    loading={cancelRegistrationMutation.isPending}
-                    onClick={() => {
-                      if (window.confirm('Cancel the Iceberg registration for this run?')) cancelRegistrationMutation.mutate();
-                    }}
-                  >
-                    Cancel registration
-                  </Button>
-                </div>
               </Panel>
 
-              <Panel title="Task progress">
-                {p ? (
-                  <TaskProgressBar succeeded={p.tasks_succeeded} running={p.tasks_running} failed={p.tasks_failed} pending={p.tasks_pending} canceled={p.tasks_canceled} />
-                ) : (
-                  <QueryState isLoading={progressQuery.isLoading} error={progressQuery.error}>{null}</QueryState>
-                )}
-              </Panel>
+              <div className="space-y-6">
+                <Panel title="Task progress">
+                  {p ? (
+                    <TaskProgressBar succeeded={p.tasks_succeeded} running={p.tasks_running} failed={p.tasks_failed} pending={p.tasks_pending} canceled={p.tasks_canceled} />
+                  ) : (
+                    <QueryState isLoading={progressQuery.isLoading} error={progressQuery.error}>{null}</QueryState>
+                  )}
+                </Panel>
+
+                <Panel title="Diagnosis" actions={<Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => diagnosisQuery.refetch()} aria-label="Re-check diagnosis">{''}</Button>}>
+                  <QueryState isLoading={diagnosisQuery.isLoading} error={diagnosisQuery.error}>
+                    {diagnosisQuery.data && (
+                      <dl className="space-y-3 text-sm">
+                        <div>
+                          <dt className="text-xs text-fg-muted">Suggested next action</dt>
+                          <dd className="mt-0.5 break-words text-fg">{diagnosisQuery.data.suggested_next_action || 'None'}</dd>
+                        </div>
+                        {diagnosisQuery.data.last_classified_error && (
+                          <div>
+                            <dt className="text-xs text-fg-muted">Last error</dt>
+                            <dd className="mt-0.5 break-words text-danger">{diagnosisQuery.data.last_classified_error}</dd>
+                          </div>
+                        )}
+                        <div>
+                          <dt className="text-xs text-fg-muted">Task counts</dt>
+                          <dd className="mt-0.5 break-words text-fg">
+                            {Object.entries(diagnosisQuery.data.task_counts ?? {}).map(([k, v]) => `${k.toLowerCase()} ${v}`).join(' · ') || 'none'}
+                          </dd>
+                        </div>
+                      </dl>
+                    )}
+                  </QueryState>
+                </Panel>
+              </div>
             </div>
 
-            <Panel title={<span className="flex items-center gap-1.5"><Stethoscope className="h-3.5 w-3.5" /> Diagnosis</span>} actions={<Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => diagnosisQuery.refetch()}>Re-check</Button>}>
-              <QueryState isLoading={diagnosisQuery.isLoading} error={diagnosisQuery.error}>
-                {diagnosisQuery.data && (
-                  <div className="space-y-2 text-xs">
-                    <p>
-                      <span className="text-fg-muted">Suggested next action: </span>
-                      <span className="text-fg">{diagnosisQuery.data.suggested_next_action || 'none'}</span>
-                    </p>
-                    {diagnosisQuery.data.last_classified_error && (
-                      <p><span className="text-fg-muted">Last error: </span><span className="text-danger">{diagnosisQuery.data.last_classified_error}</span></p>
-                    )}
-                    <p className="text-fg-muted">
-                      Task counts:{' '}
-                      {Object.entries(diagnosisQuery.data.task_counts ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ') || 'none'}
-                    </p>
-                  </div>
-                )}
-              </QueryState>
-            </Panel>
+            {(run.type_warnings?.length ?? 0) > 0 && (
+              <Panel
+                title={<span className="flex items-center gap-2 text-warn"><AlertTriangle className="h-4 w-4" aria-hidden /> Type warnings</span>}
+                description="Columns stored with a fallback type. The data is complete; consider declaring an exact type."
+                flush
+              >
+                <ul className="divide-y divide-line/70">
+                  {run.type_warnings!.map((w) => (
+                    <li key={w.column} className="grid gap-1 px-5 py-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,14rem)_minmax(0,1fr)] sm:gap-4">
+                      <span className="truncate font-mono text-sm text-fg" title={w.column}>{w.column}</span>
+                      <span className="break-words font-mono text-xs text-fg-muted">
+                        {w.source_type || w.logical_type} <span className="text-fg-subtle">→</span> {w.target_type || w.storage_type}
+                      </span>
+                      <span className="break-words text-xs text-warn">{w.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+            )}
 
             <Panel title="Tasks" description={`${tasks.length} planned`} flush>
               <QueryState isLoading={false} error={null} isEmpty={!tasks.length} emptyMessage="No tasks planned yet.">
-                <div className="overflow-x-auto">
+                <div>
                   <table className={tableClass}>
                     <thead>
                       <tr>
-                        <th className={thClass}>#</th>
-                        <th className={thClass}>Status</th>
-                        <th className={thClass}>Worker</th>
-                        <th className={thClass}>Rows</th>
-                        <th className={thClass}>Written</th>
-                        <th className={thClass}>Attempts</th>
-                        <th className={thClass}>Duration</th>
-                        <th className={thClass}>Error</th>
+                        <th className={`${thClass} w-14`}>#</th>
+                        <th className={`${thClass} w-32`}>Status</th>
+                        <th className={`${thClass} hidden md:table-cell`}>Worker</th>
+                        <th className={`${thClass} w-28 text-right`}>Rows</th>
+                        <th className={`${thClass} hidden w-24 text-right sm:table-cell`}>Written</th>
+                        <th className={`${thClass} hidden w-24 text-right lg:table-cell`}>Attempts</th>
+                        <th className={`${thClass} hidden w-24 lg:table-cell`}>Duration</th>
+                        <th className={`${thClass} hidden xl:table-cell`}>Error</th>
                       </tr>
                     </thead>
                     <tbody>
                       {tasks.map((t) => (
                         <tr key={t.id} className={rowClass}>
-                          <td className={tdClass}>{t.task_index}</td>
+                          <td className={`${tdClass} tabular-nums`}>{t.task_index}</td>
                           <td className={tdClass}><StatusBadge status={t.status} size="sm" /></td>
-                          <td className={tdClass} title={t.worker_id ?? ''}>{t.worker_id ?? '—'}</td>
-                          <td className={tdClass}>{formatNumber(t.rows_read)}</td>
-                          <td className={tdClass}>{formatBytes(t.bytes_written)}</td>
-                          <td className={tdClass}>{t.attempt_count}</td>
-                          <td className={tdClass}>{formatDuration(t.started_at, t.finished_at)}</td>
-                          <td className={`${tdClass} max-w-xs break-words text-danger`}>{t.error_message ?? ''}</td>
+                          <td className={`${tdClass} hidden truncate font-mono text-xs md:table-cell`} title={t.worker_id ?? ''}>{t.worker_id ?? '—'}</td>
+                          <td className={`${tdClass} text-right tabular-nums`}>{formatNumber(Math.max(t.rows_read, t.artifact_rows))}</td>
+                          <td className={`${tdClass} hidden text-right tabular-nums sm:table-cell`}>{formatBytes(Math.max(t.bytes_written, t.artifact_bytes))}</td>
+                          <td className={`${tdClass} hidden text-right tabular-nums lg:table-cell`}>{t.attempt_count}</td>
+                          <td className={`${tdClass} hidden tabular-nums lg:table-cell`}>{formatDuration(t.started_at, t.finished_at)}</td>
+                          <td className={`${tdClass} hidden break-words text-danger xl:table-cell`}>{t.error_message ?? ''}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -266,23 +300,23 @@ export const RunDetail: React.FC = () => {
             {!active && (
               <Panel title="Artifacts" description="Committed Parquet objects" flush>
                 <QueryState isLoading={artifactsQuery.isLoading} error={artifactsQuery.error} isEmpty={!artifactsQuery.data?.objects.length} emptyMessage="No committed Parquet objects.">
-                  <div className="overflow-x-auto">
+                  <div>
                     <table className={tableClass}>
                       <thead>
                         <tr>
                           <th className={thClass}>Object</th>
-                          <th className={thClass}>Rows</th>
-                          <th className={thClass}>Size</th>
-                          <th className={thClass}>Task</th>
+                          <th className={`${thClass} w-28 text-right`}>Rows</th>
+                          <th className={`${thClass} hidden w-24 text-right sm:table-cell`}>Size</th>
+                          <th className={`${thClass} hidden w-28 md:table-cell`}>Task</th>
                         </tr>
                       </thead>
                       <tbody>
                         {artifactsQuery.data?.objects.map((o, i) => (
                           <tr key={i} className={rowClass}>
-                            <td className={`${tdClass} break-all`}>{String(o.object_key ?? o.key ?? o.path ?? JSON.stringify(o))}</td>
-                            <td className={tdClass}>{o.row_count != null ? formatNumber(Number(o.row_count)) : '—'}</td>
-                            <td className={tdClass}>{o.byte_size != null ? formatBytes(Number(o.byte_size)) : '—'}</td>
-                            <td className={tdClass}>{shortId(o.task_id)}</td>
+                            <td className={`${tdClass} break-all font-mono text-xs`}>{String(o.object_key ?? o.key ?? o.path ?? '—')}</td>
+                            <td className={`${tdClass} text-right tabular-nums`}>{o.row_count != null ? formatNumber(Number(o.row_count)) : '—'}</td>
+                            <td className={`${tdClass} hidden text-right tabular-nums sm:table-cell`}>{o.byte_size != null ? formatBytes(Number(o.byte_size)) : '—'}</td>
+                            <td className={`${tdClass} hidden font-mono text-xs md:table-cell`}>{shortId(o.task_id)}</td>
                           </tr>
                         ))}
                       </tbody>

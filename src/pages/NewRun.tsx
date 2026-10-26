@@ -313,7 +313,7 @@ export const NewRun: React.FC = () => {
               </div>
             </Panel>
             <Panel title="Request preview">
-              <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap break-all text-xs text-fg-muted">{preview}</pre>
+              <pre className="max-h-[480px] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs text-fg-muted">{preview}</pre>
             </Panel>
           </div>
         </form>
@@ -346,14 +346,18 @@ const ValidationSummary: React.FC<{ validation: RunValidation }> = ({ validation
         {['job_name', 'target_connection_name', 'target_prefix', 'iceberg_table', 'write_mode'].map(show)}
       </ul>
       {(validation.type_warnings?.length ?? 0) > 0 && (
-        <ul className="list-disc pl-4 text-xs text-warn">
-          {validation.type_warnings.map((w, i) => <li key={i}>{w.column ? `${w.column}: ` : ''}{w.message ?? JSON.stringify(w)}</li>)}
+        <ul className="space-y-1.5 text-xs text-warn">
+          {validation.type_warnings.map((w) => (
+            <li key={w.column} className="break-words">
+              <span className="font-semibold">{w.column}</span> ({w.source_type || w.logical_type} → {w.target_type || w.storage_type}): {w.reason}
+            </li>
+          ))}
         </ul>
       )}
       {(validation.type_mappings?.length ?? 0) > 0 && (
         <details className="text-xs">
           <summary className="cursor-pointer text-accent">Schema ({validation.type_mappings.length} columns)</summary>
-          <table className="mt-2 w-full">
+          <table className="mt-2 w-full table-fixed break-words">
             <tbody>
               {validation.type_mappings.map((m) => (
                 <tr key={m.column} className={m.fallback ? 'text-warn' : ''}>

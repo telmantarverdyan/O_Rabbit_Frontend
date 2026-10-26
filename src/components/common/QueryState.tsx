@@ -57,7 +57,7 @@ export const Panel: React.FC<{ title: React.ReactNode; description?: React.React
   className,
   flush,
 }) => (
-  <section className={clsx('rounded-md border border-line bg-card/90 shadow-[inset_0_1px_0_rgb(var(--accent)/0.06)]', className)}>
+  <section className={clsx('min-w-0 rounded-md border border-line bg-card/90 shadow-[inset_0_1px_0_rgb(var(--accent)/0.06)]', className)}>
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
       <div className="min-w-0">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-accent glow">{title}</h2>
@@ -66,7 +66,7 @@ export const Panel: React.FC<{ title: React.ReactNode; description?: React.React
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>
     {/* Flush panels hold edge-to-edge tables; loading and error states still get padding. */}
-    <div className={flush ? '[&>[aria-busy]]:p-5 [&>[role=alert]]:m-5' : 'p-5'}>{children}</div>
+    <div className={clsx('min-w-0', flush ? '[&>[aria-busy]]:p-5 [&>[role=alert]]:m-5' : 'p-5')}>{children}</div>
   </section>
 );
 
@@ -149,7 +149,8 @@ export const Mono: React.FC<{ children: React.ReactNode; title?: string; classNa
   </span>
 );
 
-export const tableClass = 'w-full text-left text-sm';
-export const thClass = 'whitespace-nowrap bg-raised/40 px-4 py-2.5 text-xs font-medium text-fg-muted first:pl-5 last:pr-5';
-export const tdClass = 'border-t border-line/70 px-4 py-3 align-middle first:pl-5 last:pr-5';
+// table-fixed + wrapping cells: tables always fit their panel and never scroll sideways.
+export const tableClass = 'w-full table-fixed text-left text-sm';
+export const thClass = 'truncate bg-raised/40 px-4 py-2.5 text-xs font-medium text-fg-muted first:pl-5 last:pr-5';
+export const tdClass = 'break-words border-t border-line/70 px-4 py-3 align-middle first:pl-5 last:pr-5';
 export const rowClass = 'transition-colors hover:bg-raised/40';

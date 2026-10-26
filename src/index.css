@@ -21,6 +21,17 @@
 }
 
 @layer base {
+  /* Pages never scroll sideways; wide content wraps or truncates instead. */
+  html,
+  body,
+  #root {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  /* Grid items default to min-width:auto and stretch to their widest child; let them shrink and wrap. */
+  .grid > * {
+    min-width: 0;
+  }
   body {
     @apply bg-canvas font-sans text-sm text-fg antialiased;
     background-image: radial-gradient(ellipse at 50% 0%, rgb(var(--accent) / 0.07), transparent 70%);

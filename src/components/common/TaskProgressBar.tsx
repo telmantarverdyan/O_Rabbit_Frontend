@@ -43,12 +43,12 @@ export const TaskProgressBar: React.FC<TaskProgressBarProps> = ({ succeeded, run
               <div key={s.label} className={`${s.className} h-full transition-[width] duration-500`} style={{ width: `${(s.value / total) * 100}%` }} />
             ))}
       </div>
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-3">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
         {segments.map((s) => (
           <li key={s.label} className="flex items-center gap-2 text-fg-muted">
             <span className={`h-2 w-2 rounded-sm ${s.className}`} aria-hidden />
             {s.label}
-            <span className="ml-auto tabular-nums text-fg">{s.value}</span>
+            <span className="tabular-nums text-fg">{s.value}</span>
           </li>
         ))}
       </ul>

@@ -23,7 +23,7 @@ const iconColor = {
 } as const;
 
 export const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, icon: Icon, color = 'emerald', className, trend }) => (
-  <div className={clsx('rounded-md border border-line bg-card/90 p-4 transition-colors hover:border-accent/50', className)}>
+  <div className={clsx('min-w-0 rounded-md border border-line bg-card/90 p-4 transition-colors hover:border-accent/50', className)}>
     <div className="flex items-start justify-between gap-3">
       <p className="text-[11px] font-medium uppercase tracking-widest text-fg-muted">{title}</p>
       <span className={clsx('rounded-md p-1.5', iconColor[color])}>

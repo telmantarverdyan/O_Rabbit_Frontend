@@ -93,7 +93,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
               </button>
             ))}
           </div>
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle" aria-hidden />
             <input
               type="search"
@@ -101,7 +101,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
               placeholder="Search events"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 w-48 rounded-md border border-line bg-canvas pl-8 pr-3 text-xs text-fg placeholder:text-fg-subtle/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+              className="h-8 w-full rounded-md sm:w-48 border border-line bg-canvas pl-8 pr-3 text-xs text-fg placeholder:text-fg-subtle/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
             />
           </div>
           <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs text-fg-muted">
@@ -115,10 +115,10 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
 
       <div ref={logContainerRef} className="h-96 select-text overflow-y-auto bg-canvas/60 px-2 py-2 font-mono text-xs" role="log" aria-live="off">
         {filteredEvents.map((evt, idx) => (
-          <div key={evt.id || idx} className="flex items-start gap-3 rounded px-3 py-1 hover:bg-raised/40">
+          <div key={evt.id || idx} className="flex flex-wrap items-start gap-x-3 rounded px-3 py-1 hover:bg-raised/40 sm:flex-nowrap">
             <span className="w-20 flex-shrink-0 select-none tabular-nums text-fg-subtle">{evt.ts ? new Date(evt.ts).toLocaleTimeString() : '—'}</span>
             <span className={`w-12 flex-shrink-0 select-none font-medium ${levelStyle(evt.level)}`}>{(evt.level || 'INFO').toUpperCase()}</span>
-            <span className="flex-1 whitespace-pre-wrap break-words leading-relaxed text-fg">{evt.message}</span>
+            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-relaxed text-fg">{evt.message}</span>
           </div>
         ))}
         {filteredEvents.length === 0 && (

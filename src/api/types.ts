@@ -59,10 +59,15 @@ export interface Job {
 
 export type JobRequest = Omit<Job, 'id' | 'created_at' | 'updated_at'>;
 
+/** A column whose source type had no exact Parquet mapping (typesystem.TypeWarning). */
 export interface TypeWarning {
-  column?: string;
-  message?: string;
-  [key: string]: unknown;
+  column: string;
+  source_type?: string;
+  logical_type: string;
+  storage_type: string;
+  target_type?: string;
+  class: string;
+  reason: string;
 }
 
 export interface Run {
@@ -83,6 +88,7 @@ export interface Run {
   data_status?: string;
   catalog_status?: string;
   readiness?: string;
+  registration_id?: string;
   registration_attempt: number;
   registration_error_class?: string;
   registration_next_retry_at?: string | null;

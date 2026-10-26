@@ -44,16 +44,16 @@ export const Jobs: React.FC = () => {
       />
       <Panel title={`${jobs.length} jobs`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={jobsQuery.isFetching} onClick={() => jobsQuery.refetch()}>Refresh</Button>}>
         <QueryState isLoading={jobsQuery.isLoading} error={jobsQuery.error} onRetry={() => jobsQuery.refetch()} isEmpty={!jobs.length} emptyMessage="No jobs yet. One-shot runs from New Run also create a job.">
-          <div className="overflow-x-auto">
+          <div>
             <table className={tableClass}>
               <thead>
                 <tr>
                   <th className={thClass}>Name</th>
-                  <th className={thClass}>Source → Target</th>
-                  <th className={thClass}>Target table</th>
-                  <th className={thClass}>Mode</th>
-                  <th className={thClass}>Updated</th>
-                  <th className={thClass} />
+                  <th className={`${thClass} hidden lg:table-cell`}>Source → Target</th>
+                  <th className={`${thClass} hidden md:table-cell`}>Target table</th>
+                  <th className={`${thClass} hidden w-44 xl:table-cell`}>Mode</th>
+                  <th className={`${thClass} hidden w-44 sm:table-cell`}>Updated</th>
+                  <th className={`${thClass} w-40`}><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -63,11 +63,11 @@ export const Jobs: React.FC = () => {
                       <div className="text-fg">{job.name}</div>
                       <div className="font-mono text-xs text-fg-subtle">{job.id}</div>
                     </td>
-                    <td className={tdClass}>{connectionName(job.source_connection_id)} → {connectionName(job.target_connection_id)}</td>
-                    <td className={tdClass}>{[job.target_namespace, job.target_table].filter(Boolean).join('.') || '—'}</td>
-                    <td className={tdClass}>{job.write_mode}{job.incremental ? ` · incremental (${job.hwm_column ?? '?'})` : ''}</td>
-                    <td className={`${tdClass} whitespace-nowrap`}>{formatTime(job.updated_at)}</td>
-                    <td className={`${tdClass} whitespace-nowrap text-right space-x-1`}>
+                    <td className={`${tdClass} hidden lg:table-cell`}>{connectionName(job.source_connection_id)} → {connectionName(job.target_connection_id)}</td>
+                    <td className={`${tdClass} hidden truncate font-mono text-xs md:table-cell`}>{[job.target_namespace, job.target_table].filter(Boolean).join('.') || '—'}</td>
+                    <td className={`${tdClass} hidden xl:table-cell`}>{job.write_mode}{job.incremental ? ` · incremental (${job.hwm_column ?? '?'})` : ''}</td>
+                    <td className={`${tdClass} hidden text-fg-muted sm:table-cell`}>{formatTime(job.updated_at)}</td>
+                    <td className={`${tdClass} space-x-1 text-right`}>
                       <Button size="sm" icon={Play} onClick={() => setRunning(job)}>Run</Button>
                       <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing(job)} title="Edit" aria-label={`Edit ${job.name}`}>{''}</Button>
                       <Button

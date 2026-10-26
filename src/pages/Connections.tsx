@@ -37,16 +37,16 @@ export const Connections: React.FC = () => {
       />
       <Panel title={`${connections.length} connections`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={query.isFetching} onClick={() => query.refetch()}>Refresh</Button>}>
         <QueryState isLoading={query.isLoading} error={query.error} onRetry={() => query.refetch()} isEmpty={!connections.length} emptyMessage="No connections yet.">
-          <div className="overflow-x-auto">
+          <div>
             <table className={tableClass}>
               <thead>
                 <tr>
                   <th className={thClass}>Name</th>
-                  <th className={thClass}>Kind</th>
-                  <th className={thClass}>Engine</th>
-                  <th className={thClass}>Metadata</th>
-                  <th className={thClass}>Updated</th>
-                  <th className={thClass} />
+                  <th className={`${thClass} w-24`}>Kind</th>
+                  <th className={`${thClass} hidden w-32 sm:table-cell`}>Engine</th>
+                  <th className={`${thClass} hidden lg:table-cell`}>Metadata</th>
+                  <th className={`${thClass} hidden w-44 md:table-cell`}>Updated</th>
+                  <th className={`${thClass} w-24`}><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -57,10 +57,10 @@ export const Connections: React.FC = () => {
                       <div className="font-mono text-xs text-fg-subtle">{c.id}</div>
                     </td>
                     <td className={tdClass}>{c.kind}</td>
-                    <td className={tdClass}>{c.engine}</td>
-                    <td className={`${tdClass} max-w-sm truncate text-fg-muted`} title={JSON.stringify(c.metadata_json)}>{c.metadata_json ? JSON.stringify(c.metadata_json) : '—'}</td>
-                    <td className={`${tdClass} whitespace-nowrap`}>{formatTime(c.updated_at)}</td>
-                    <td className={`${tdClass} whitespace-nowrap text-right`}>
+                    <td className={`${tdClass} hidden sm:table-cell`}>{c.engine}</td>
+                    <td className={`${tdClass} hidden truncate font-mono text-xs text-fg-muted lg:table-cell`} title={JSON.stringify(c.metadata_json)}>{c.metadata_json ? JSON.stringify(c.metadata_json) : '—'}</td>
+                    <td className={`${tdClass} hidden text-fg-muted md:table-cell`}>{formatTime(c.updated_at)}</td>
+                    <td className={`${tdClass} text-right`}>
                       <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing(c)} aria-label={`Edit ${c.name}`}>{''}</Button>
                       <Button
                         size="sm"
