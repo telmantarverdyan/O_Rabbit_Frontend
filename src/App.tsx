@@ -15,6 +15,7 @@ const RunFromFile = lazy(() => import('./pages/RunFromFile').then((m) => ({ defa
 const RunDetail = lazy(() => import('./pages/RunDetail').then((m) => ({ default: m.RunDetail })));
 const Jobs = lazy(() => import('./pages/Jobs').then((m) => ({ default: m.Jobs })));
 const Connections = lazy(() => import('./pages/Connections').then((m) => ({ default: m.Connections })));
+const Logs = lazy(() => import('./pages/Logs').then((m) => ({ default: m.Logs })));
 const Workers = lazy(() => import('./pages/Workers').then((m) => ({ default: m.Workers })));
 
 const PageFallback: React.FC = () => (
@@ -68,6 +69,7 @@ export const App: React.FC = () => {
                   <Route path="/jobs" element={<Jobs />} />
                   <Route path="/connections" element={<Connections />} />
                   <Route path="/workers" element={<Workers />} />
+                  <Route path="/logs" element={<Logs />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
               </Routes>

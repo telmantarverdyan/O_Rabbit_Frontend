@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { clsx } from 'clsx';
-import { Briefcase, Database, FileUp, LayoutDashboard, ListOrdered, Play, Server, X } from 'lucide-react';
+import { Briefcase, Database, FileUp, LayoutDashboard, ListOrdered, Play, ScrollText, Server, X } from 'lucide-react';
 import { RabbitLogo } from '@/components/branding/RabbitLogo';
 
 interface NavItem {
@@ -24,6 +24,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
       { to: '/runs', label: 'Runs', icon: ListOrdered, end: true },
+      { to: '/logs', label: 'Logs', icon: ScrollText },
     ],
   },
   {
