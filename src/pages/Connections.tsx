@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { createConnection, deleteConnection, fetchConnections, fetchSourceEngines, updateConnection } from '@/api/connections';
@@ -8,7 +8,9 @@ import { Button } from '@/components/common/Button';
 import { Input, Select } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { PageTitle, Panel, QueryState, TextArea, tableClass, tdClass, thClass } from '@/components/common/QueryState';
+import { Pagination } from '@/components/common/Pagination';
 import { useToast } from '@/components/common/Toast';
+import { usePagination } from '@/hooks/usePagination';
 import { formatTime, parseJsonField } from '@/utils/format';
 
 export const Connections: React.FC = () => {
@@ -26,7 +28,10 @@ export const Connections: React.FC = () => {
     onError: (err) => toast.error(errorMessage(err), 'Delete failed'),
   });
 
-  const connections = query.data ?? [];
+  const connections = useMemo(() => query.data ?? [], [query.data]);
+  // GET /connections pages by cursor only (no total, no jump to page N), so the list is
+  // loaded in 1000-row chunks once, cached, and only the current page is rendered.
+  const pagination = usePagination(connections);
 
   return (
     <div className="space-y-6">
@@ -35,7 +40,7 @@ export const Connections: React.FC = () => {
         subtitle="Saved sources and S3 targets used by jobs. Secrets are encrypted by the master and never shown again."
         actions={<Button variant="cyber" icon={Plus} onClick={() => setEditing('new')}>New connection</Button>}
       />
-      <Panel title={`${connections.length} connections`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={query.isFetching} onClick={() => query.refetch()}>Refresh</Button>}>
+      <Panel title="Connections" description={`${connections.length.toLocaleString()} total`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={query.isFetching} onClick={() => query.refetch()}>Refresh</Button>}>
         <QueryState isLoading={query.isLoading} error={query.error} onRetry={() => query.refetch()} isEmpty={!connections.length} emptyMessage="No connections yet.">
           <div>
             <table className={tableClass}>
@@ -50,7 +55,7 @@ export const Connections: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {connections.map((c) => (
+                {pagination.items.map((c) => (
                   <tr key={c.id} className="transition-colors hover:bg-raised/40">
                     <td className={tdClass}>
                       <div className="text-fg">{c.name}</div>
@@ -79,6 +84,7 @@ export const Connections: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <Pagination state={pagination} noun="connections" />
         </QueryState>
       </Panel>
       {editing && <ConnectionFormModal connection={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}

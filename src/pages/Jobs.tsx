@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
@@ -11,7 +11,9 @@ import { Button } from '@/components/common/Button';
 import { Input, Select } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { Checkbox, PageTitle, Panel, QueryState, TextArea, tableClass, tdClass, thClass } from '@/components/common/QueryState';
+import { Pagination } from '@/components/common/Pagination';
 import { useToast } from '@/components/common/Toast';
+import { usePagination } from '@/hooks/usePagination';
 import { formatTime, parseJsonField, shortId } from '@/utils/format';
 
 export const Jobs: React.FC = () => {
@@ -33,7 +35,9 @@ export const Jobs: React.FC = () => {
     onError: (err) => toast.error(errorMessage(err), 'Delete failed'),
   });
 
-  const jobs = jobsQuery.data ?? [];
+  const jobs = useMemo(() => jobsQuery.data ?? [], [jobsQuery.data]);
+  // The master returns every job in one response (no paging on GET /jobs), so only rendering is paged.
+  const pagination = usePagination(jobs);
 
   return (
     <div className="space-y-6">
@@ -42,7 +46,7 @@ export const Jobs: React.FC = () => {
         subtitle="Stored export definitions that use saved connections. Start one with Run."
         actions={<Button variant="cyber" icon={Plus} onClick={() => setEditing('new')}>New job</Button>}
       />
-      <Panel title={`${jobs.length} jobs`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={jobsQuery.isFetching} onClick={() => jobsQuery.refetch()}>Refresh</Button>}>
+      <Panel title="Jobs" description={`${jobs.length.toLocaleString()} total`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={jobsQuery.isFetching} onClick={() => jobsQuery.refetch()}>Refresh</Button>}>
         <QueryState isLoading={jobsQuery.isLoading} error={jobsQuery.error} onRetry={() => jobsQuery.refetch()} isEmpty={!jobs.length} emptyMessage="No jobs yet. One-shot runs from New Run also create a job.">
           <div>
             <table className={tableClass}>
@@ -57,7 +61,7 @@ export const Jobs: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((job) => (
+                {pagination.items.map((job) => (
                   <tr key={job.id} className="transition-colors hover:bg-raised/40">
                     <td className={tdClass}>
                       <div className="text-fg">{job.name}</div>
@@ -88,6 +92,7 @@ export const Jobs: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <Pagination state={pagination} noun="jobs" />
         </QueryState>
       </Panel>
 
