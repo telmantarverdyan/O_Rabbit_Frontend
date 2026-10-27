@@ -7,15 +7,19 @@ import {
   clearSession,
   getSession,
   normalizeMasterUrl,
+  saveOpsToken,
   saveSession,
 } from '@/api/client';
+import { verifyOpsToken } from '@/api/remoteOps';
 import { fetchStatus } from '@/api/status';
 
 interface AuthContextValue {
   session: Session | null;
   /** True when the master rejected the stored token, so the login page can say why. */
   expired: boolean;
-  login: (masterAddress: string, token: string) => Promise<void>;
+  login: (masterAddress: string, token: string, opsToken?: string) => Promise<void>;
+  /** Adds or replaces the remote-operations token for this tab after checking it. */
+  setOpsToken: (opsToken: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -34,8 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [queryClient]);
 
   const login = useCallback(
-    async (masterAddress: string, token: string) => {
-      const candidate: Session = { masterUrl: normalizeMasterUrl(masterAddress), token: token.trim() };
+    async (masterAddress: string, token: string, opsToken = '') => {
+      const candidate: Session = { masterUrl: normalizeMasterUrl(masterAddress), token: token.trim(), ...(opsToken.trim() ? { opsToken: opsToken.trim() } : {}) };
       if (!candidate.token) throw new Error('API token is required');
       try {
         // /status requires the API token, so a 200 proves both address and token.
@@ -46,12 +50,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         throw err;
       }
+      if (candidate.opsToken) await verifyOpsToken(candidate);
       queryClient.clear();
       saveSession(candidate);
       setExpired(false);
       setSession(candidate);
     },
     [queryClient]
+  );
+
+  const setOpsToken = useCallback(
+    async (opsToken: string) => {
+      if (!session) throw new Error('Log in first.');
+      const next: Session = { ...session, opsToken: opsToken.trim() || undefined };
+      if (next.opsToken) await verifyOpsToken(next);
+      saveOpsToken(next.opsToken ?? '');
+      setSession(next);
+      // Remote-ops data was fetched with the old token (or none); load it again.
+      queryClient.invalidateQueries({ queryKey: ['ops'] });
+    },
+    [session, queryClient]
   );
 
   useEffect(() => {
@@ -64,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, [logout]);
 
-  const value = useMemo(() => ({ session, expired, login, logout }), [session, expired, login, logout]);
+  const value = useMemo(() => ({ session, expired, login, setOpsToken, logout }), [session, expired, login, setOpsToken, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

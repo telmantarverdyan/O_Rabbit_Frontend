@@ -6,6 +6,8 @@ interface StatusBadgeProps {
   status: RunStatus | TaskStatus | string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  /** Text to show instead of the status, when the tone comes from a different word. */
+  label?: string;
 }
 
 type Tone = 'success' | 'active' | 'pending' | 'failed' | 'neutral';
@@ -44,10 +46,10 @@ const toneStyles: Record<Tone, { badge: string; dot: string }> = {
 };
 
 /** Status pill: the label carries the meaning, the color only reinforces it. */
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className, size = 'md' }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className, size = 'md', label: labelOverride }) => {
   const norm = (status || 'UNKNOWN').toUpperCase();
   const tone = toneStyles[toneOf(norm)];
-  const label = norm.charAt(0) + norm.slice(1).toLowerCase();
+  const label = labelOverride ?? norm.charAt(0) + norm.slice(1).toLowerCase();
   return (
     <span
       className={clsx(

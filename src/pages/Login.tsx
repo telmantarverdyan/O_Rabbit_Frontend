@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { KeyRound, Server } from 'lucide-react';
+import { KeyRound, Server, ShieldCheck } from 'lucide-react';
 import { RabbitLogo } from '@/components/branding/RabbitLogo';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -14,6 +14,7 @@ export const Login: React.FC = () => {
   const location = useLocation();
   const [masterAddress, setMasterAddress] = useState(() => getLastMasterUrl() || DEFAULT_MASTER);
   const [token, setToken] = useState('');
+  const [opsToken, setOpsTokenValue] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,7 +28,7 @@ export const Login: React.FC = () => {
     setError('');
     setSubmitting(true);
     try {
-      await login(masterAddress, token);
+      await login(masterAddress, token, opsToken);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -67,6 +68,15 @@ export const Login: React.FC = () => {
             helperText="ORABBIT_HTTP_AUTH_TOKEN. Kept only for this tab."
             autoComplete="current-password"
             required
+          />
+          <Input
+            label="Remote-operations token (optional)"
+            icon={ShieldCheck}
+            type="password"
+            value={opsToken}
+            onChange={(e) => setOpsTokenValue(e.target.value)}
+            helperText="ORABBIT_REMOTE_OPS_AUTH_TOKEN. Needed only to create workers on your servers; you can add it later."
+            autoComplete="off"
           />
           {error && (
             <p role="alert" className="break-words rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">

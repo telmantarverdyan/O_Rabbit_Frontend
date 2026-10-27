@@ -10,10 +10,14 @@ export const UNAUTHORIZED_EVENT = 'orabbit:unauthorized';
 const MASTER_URL_KEY = 'orabbit_master_url';
 // The token lives in sessionStorage so it is forgotten when the tab closes.
 const AUTH_TOKEN_KEY = 'orabbit_auth_token';
+// The remote-operations token (ORABBIT_REMOTE_OPS_AUTH_TOKEN) is optional and kept the same way.
+const OPS_TOKEN_KEY = 'orabbit_ops_token';
 
 export interface Session {
   masterUrl: string;
   token: string;
+  /** Unlocks worker provisioning (servers, deployments). Optional. */
+  opsToken?: string;
 }
 
 function safeGet(storage: Storage, key: string): string {
@@ -44,7 +48,8 @@ export function normalizeMasterUrl(raw: string): string {
 export function getSession(): Session | null {
   const masterUrl = safeGet(localStorage, MASTER_URL_KEY);
   const token = safeGet(sessionStorage, AUTH_TOKEN_KEY);
-  return masterUrl && token ? { masterUrl, token } : null;
+  const opsToken = safeGet(sessionStorage, OPS_TOKEN_KEY);
+  return masterUrl && token ? { masterUrl, token, ...(opsToken ? { opsToken } : {}) } : null;
 }
 
 /** The last master address, kept after logout to prefill the login form. */
@@ -55,10 +60,17 @@ export function getLastMasterUrl(): string {
 export function saveSession(session: Session): void {
   localStorage.setItem(MASTER_URL_KEY, session.masterUrl);
   sessionStorage.setItem(AUTH_TOKEN_KEY, session.token.trim());
+  saveOpsToken(session.opsToken ?? '');
+}
+
+export function saveOpsToken(token: string): void {
+  if (token.trim()) sessionStorage.setItem(OPS_TOKEN_KEY, token.trim());
+  else sessionStorage.removeItem(OPS_TOKEN_KEY);
 }
 
 export function clearSession(): void {
   sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  sessionStorage.removeItem(OPS_TOKEN_KEY);
 }
 
 export class ApiError extends Error {
@@ -104,11 +116,15 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 /** Headers every master request needs. */
-export function masterHeaders(session: Session | null = getSession()): Headers {
+/** Which token a request uses: the data API token, or the separate remote-operations token. */
+export type AuthKind = 'api' | 'ops';
+
+export function masterHeaders(session: Session | null = getSession(), auth: AuthKind = 'api'): Headers {
   const headers = new Headers();
   if (session) {
     headers.set(MASTER_HEADER, session.masterUrl);
-    headers.set('Authorization', `Bearer ${session.token}`);
+    const token = auth === 'ops' ? session.opsToken : session.token;
+    if (token) headers.set('Authorization', `Bearer ${token}`);
   }
   return headers;
 }
@@ -122,9 +138,13 @@ export interface ApiResponse<T> {
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
-  session: Session | null = getSession()
+  session: Session | null = getSession(),
+  auth: AuthKind = 'api'
 ): Promise<ApiResponse<T>> {
-  const headers = masterHeaders(session);
+  if (auth === 'ops' && !session?.opsToken) {
+    throw new ApiError(0, 'Worker provisioning needs the remote-operations token (ORABBIT_REMOTE_OPS_AUTH_TOKEN).', 'ops_token_missing');
+  }
+  const headers = masterHeaders(session, auth);
   new Headers(options.headers).forEach((value, key) => headers.set(key, value));
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
 
@@ -133,7 +153,13 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const error = await toApiError(response);
-    if (response.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    if (response.status === 401) {
+      // A rejected ops token must not log the user out of the data API.
+      if (auth === 'ops') {
+        throw new ApiError(401, 'The master rejected the remote-operations token (ORABBIT_REMOTE_OPS_AUTH_TOKEN).', 'ops_unauthorized');
+      }
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
     throw error;
   }
 
@@ -146,6 +172,11 @@ export async function apiRequest<T>(
 /** Calls the master. Paths without a leading slash are relative to /api/v1. */
 export async function apiClient<T>(path: string, options: RequestInit = {}): Promise<T> {
   return (await apiRequest<T>(path, options)).data;
+}
+
+/** Calls a remote-operations route (servers, deployments) with the ops token. */
+export async function opsClient<T>(path: string, options: RequestInit = {}, session: Session | null = getSession()): Promise<T> {
+  return (await apiRequest<T>(path, options, session, 'ops')).data;
 }
 
 export function postJSON<T>(path: string, body: unknown): Promise<T> {

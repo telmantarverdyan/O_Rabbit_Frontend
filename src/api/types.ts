@@ -188,13 +188,115 @@ export interface RecoveryResult {
   message: string;
 }
 
+/** Free-form data a worker reports about itself (cmd/worker/main.go). */
+export interface WorkerCapabilities {
+  go?: string;
+  os?: string;
+  arch?: string;
+  num_cpu?: number;
+  memory_bytes?: number;
+  [key: string]: unknown;
+}
+
+export interface WorkerInstance {
+  boot_id: string;
+  worker_id: string;
+  hostname: string;
+  pid: number;
+  version: string;
+  status: string;
+  started_at: string;
+  last_heartbeat: string;
+}
+
 export interface Worker {
   id: string;
   addr: string;
   status: string;
   last_heartbeat: string;
-  capabilities_json: unknown;
-  instances: JsonObject[] | null;
+  capabilities_json: WorkerCapabilities | null;
+  instances: WorkerInstance[] | null;
+  /** Tasks this worker holds a lease on. Missing on masters older than this field. */
+  running_tasks?: number;
+}
+
+// ---- Remote operations (separate ORABBIT_REMOTE_OPS_AUTH_TOKEN) ----
+
+export interface Server {
+  id: string;
+  name: string;
+  host: string;
+  ssh_port: number;
+  ssh_user: string;
+  project_dir: string;
+  role_hints: string[];
+  labels: Record<string, string>;
+  last_seen_at: string | null;
+  last_error: string | null;
+}
+
+export type ServerAuthType = 'private_key' | 'password';
+
+export interface ServerCreateRequest {
+  name: string;
+  host: string;
+  ssh_port: number;
+  ssh_user: string;
+  project_dir: string;
+  role_hints?: string[];
+  credential: {
+    auth_type: ServerAuthType;
+    username?: string;
+    private_key?: string;
+    passphrase?: string;
+    password?: string;
+    host_key_fingerprint: string;
+  };
+}
+
+export interface SshTestResult {
+  ok: boolean;
+  latency_ms: number;
+  remote_user: string;
+  hostname: string;
+  host_key_fingerprint: string;
+}
+
+export interface ProjectValidation {
+  ok: boolean;
+  project_dir: string;
+  files: Record<string, boolean>;
+  errors: string[] | null;
+}
+
+/** POST /deployments params for component "worker" (see O_Rabbit/internal/ops/deploy). */
+export interface WorkerDeploymentParams {
+  scale?: number;
+  name?: string;
+  cpus?: string;
+  memory?: string;
+}
+
+export interface Deployment {
+  id: string;
+  server_id: string;
+  component: string;
+  script_id: string;
+  status: string;
+  execution_id?: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error?: string | null;
+}
+
+/** One event on /deployments/{id}/events/stream. */
+export interface OpsStreamEvent {
+  type: string;
+  stream_id: string;
+  sequence: number;
+  timestamp: string;
+  level: string;
+  data?: { line?: string; status?: string; exit_code?: number; error?: string; [key: string]: unknown };
 }
 
 export interface SourceEngine {
