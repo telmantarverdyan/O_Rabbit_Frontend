@@ -14,6 +14,7 @@ import { Checkbox, PageTitle, Panel, QueryState, TextArea, tableClass, tdClass, 
 import { Pagination } from '@/components/common/Pagination';
 import { useToast } from '@/components/common/Toast';
 import { usePagination } from '@/hooks/usePagination';
+import { UrlFilterChip, useUrlQueryFilter } from '@/components/common/UrlFilter';
 import { formatTime, parseJsonField, shortId } from '@/utils/format';
 
 export const Jobs: React.FC = () => {
@@ -35,7 +36,12 @@ export const Jobs: React.FC = () => {
     onError: (err) => toast.error(errorMessage(err), 'Delete failed'),
   });
 
-  const jobs = useMemo(() => jobsQuery.data ?? [], [jobsQuery.data]);
+  const [urlQ, clearUrlQ] = useUrlQueryFilter();
+  const jobs = useMemo(() => {
+    const all = jobsQuery.data ?? [];
+    const q = urlQ.toLowerCase();
+    return q ? all.filter((j) => j.id.toLowerCase().includes(q) || j.name.toLowerCase().includes(q)) : all;
+  }, [jobsQuery.data, urlQ]);
   // The master returns every job in one response (no paging on GET /jobs), so only rendering is paged.
   const pagination = usePagination(jobs);
 
@@ -47,6 +53,7 @@ export const Jobs: React.FC = () => {
         actions={<Button variant="cyber" icon={Plus} onClick={() => setEditing('new')}>New job</Button>}
       />
       <Panel title="Jobs" description={`${jobs.length.toLocaleString()} total`} flush actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={jobsQuery.isFetching} onClick={() => jobsQuery.refetch()}>Refresh</Button>}>
+        <UrlFilterChip q={urlQ} onClear={clearUrlQ} />
         <QueryState isLoading={jobsQuery.isLoading} error={jobsQuery.error} onRetry={() => jobsQuery.refetch()} isEmpty={!jobs.length} emptyMessage="No jobs yet. One-shot runs from New Run also create a job.">
           <div>
             <table className={tableClass}>

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, Clock, Database, FileText, LifeBuoy, RefreshCw, RotateCcw, RotateCw, Rows3, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Clock, Database, FileText, LifeBuoy, RefreshCw, RotateCcw, RotateCw, Rows3, ScrollText, XCircle } from 'lucide-react';
 import {
   cancelRegistration,
   fetchRun,
@@ -131,6 +131,9 @@ export const RunDetail: React.FC = () => {
                       Run again
                     </Button>
                   )}
+                  <Link to={`/logs?source=events&run=${run.id}`}>
+                    <Button variant="secondary" size="sm" icon={ScrollText}>Logs</Button>
+                  </Link>
                   <Button variant="secondary" size="sm" icon={LifeBuoy} onClick={() => setRecoverOpen(true)}>Recover</Button>
                 </>
               }
@@ -272,7 +275,7 @@ export const RunDetail: React.FC = () => {
                     </thead>
                     <tbody>
                       {tasks.map((t) => (
-                        <tr key={t.id} className={rowClass}>
+                        <tr key={t.id} id={`task-${t.id}`} className={`${rowClass} target:bg-accent/10`}>
                           <td className={`${tdClass} tabular-nums`}>{t.task_index}</td>
                           <td className={tdClass}><StatusBadge status={t.status} size="sm" /></td>
                           <td className={`${tdClass} hidden truncate font-mono text-xs md:table-cell`} title={t.worker_id ?? ''}>{t.worker_id ?? '—'}</td>

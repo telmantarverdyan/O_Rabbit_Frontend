@@ -15,6 +15,7 @@ import { CreateWorkerModal } from '@/components/workers/CreateWorkerModal';
 import { EnrollmentModal } from '@/components/workers/EnrollmentModal';
 import { ProvisioningPanel } from '@/components/workers/ProvisioningPanel';
 import { usePagination } from '@/hooks/usePagination';
+import { UrlFilterChip, useUrlQueryFilter } from '@/components/common/UrlFilter';
 import { formatTime } from '@/utils/format';
 import { workerConnection, WorkerConnection, workerGroupName, workerResources } from '@/utils/workers';
 
@@ -41,7 +42,11 @@ export const Workers: React.FC = () => {
     return c;
   }, [workers]);
   const runningTasks = workers.reduce((n, w) => n + (w.running_tasks ?? 0), 0);
-  const filtered = useMemo(() => (filter ? workers.filter((w) => w.connection === filter) : workers), [workers, filter]);
+  const [urlQ, clearUrlQ] = useUrlQueryFilter();
+  const filtered = useMemo(() => {
+    const q = urlQ.toLowerCase();
+    return workers.filter((w) => (!filter || w.connection === filter) && (!q || w.id.toLowerCase().includes(q)));
+  }, [workers, filter, urlQ]);
   const pagination = usePagination(filtered);
 
   const revoke = useMutation({
@@ -82,6 +87,7 @@ export const Workers: React.FC = () => {
         flush
         actions={<Button variant="ghost" size="sm" icon={RefreshCw} loading={workersQuery.isFetching} onClick={() => workersQuery.refetch()} aria-label="Refresh workers">{''}</Button>}
       >
+        <UrlFilterChip q={urlQ} onClear={clearUrlQ} />
         <div className="flex flex-wrap gap-1.5 border-b border-line px-5 py-3" role="radiogroup" aria-label="Filter by connection">
           {FILTERS.map((f) => (
             <button
