@@ -36,7 +36,7 @@ interface LogFiltersProps {
   timeFilters: boolean;
 }
 
-const field = 'h-8 rounded-md border border-line bg-canvas px-2 text-xs text-fg placeholder:text-fg-subtle/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25';
+const field = 'h-8 bevel-in bg-canvas px-2 text-xs text-fg placeholder:text-fg-subtle/70 focus:outline-none';
 
 export const LogFilters: React.FC<LogFiltersProps> = ({ values, onChange, entityFilters, timeFilters }) => {
   // Typing updates the box at once; the (server) query follows after a pause.
@@ -66,8 +66,8 @@ export const LogFilters: React.FC<LogFiltersProps> = ({ values, onChange, entity
                 aria-pressed={on}
                 onClick={() => toggleLevel(l)}
                 className={clsx(
-                  'h-8 cursor-pointer rounded-md border px-2.5 font-mono text-[11px] uppercase tracking-wide transition-colors',
-                  on ? clsx('border-current', LEVEL_STYLE[l].text, 'bg-raised') : 'border-line text-fg-subtle hover:text-fg'
+                  'h-8 cursor-pointer px-2.5 font-mono text-[11px] uppercase tracking-wide transition-colors',
+                  on ? clsx('border-current', LEVEL_STYLE[l].text, 'bg-raised') : 'bevel-out bg-card text-fg-muted active:bevel-in'
                 )}
               >
                 {LEVEL_LABEL[l]}
@@ -95,7 +95,7 @@ export const LogFilters: React.FC<LogFiltersProps> = ({ values, onChange, entity
             type="button"
             onClick={() => setMore((m) => !m)}
             aria-expanded={more}
-            className={clsx('inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors', activeEntity ? 'border-accent/60 text-accent' : 'border-line text-fg-muted hover:text-fg')}
+            className={clsx('inline-flex h-8 cursor-pointer items-center gap-1.5 px-2.5 text-xs transition-colors', activeEntity ? 'border-accent/60 text-accent' : 'border-line text-fg-muted hover:text-fg')}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
             Filters{activeEntity ? ` (${activeEntity})` : ''}

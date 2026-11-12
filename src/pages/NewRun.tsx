@@ -121,7 +121,7 @@ export const NewRun: React.FC = () => {
   const fieldErrors = formError instanceof ApiError ? formError.fieldErrors : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageTitle
         title="New Run"
         subtitle="Export a table or query to Parquet on S3, optionally registered in Iceberg (POST /runs/submit)."
@@ -150,15 +150,15 @@ export const NewRun: React.FC = () => {
 
       <QueryState isLoading={enginesQuery.isLoading} error={enginesQuery.error} onRetry={() => enginesQuery.refetch()} isEmpty={!engines.length} emptyMessage="The master reports no source engines that support one-shot runs.">
         <form
-          className="grid gap-6 lg:grid-cols-3"
+          className="grid gap-2.5 lg:grid-cols-3"
           onSubmit={(e) => {
             e.preventDefault();
             run('submit');
           }}
         >
-          <div className="space-y-6 lg:col-span-2">
+          <div className="space-y-3 lg:col-span-2">
             <Panel title="1 · Source">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 <Select
                   label="Engine"
                   value={form.engine}
@@ -220,7 +220,7 @@ export const NewRun: React.FC = () => {
 
             <Panel title="2 · Target (S3)">
               <p className="mb-4 text-xs text-fg-muted">Leave empty to use the master&apos;s configured S3 defaults.</p>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 <Input label="S3 endpoint" value={form.s3Endpoint} onChange={(e) => set('s3Endpoint', e.target.value)} placeholder="http://minio:9000" />
                 <Input label="S3 region" value={form.s3Region} onChange={(e) => set('s3Region', e.target.value)} placeholder="us-east-1" />
                 <Input label="S3 bucket" value={form.s3Bucket} onChange={(e) => set('s3Bucket', e.target.value)} />
@@ -234,7 +234,7 @@ export const NewRun: React.FC = () => {
             <Panel title="3 · Iceberg registration">
               <Checkbox label="Register the files in an Iceberg catalog" checked={form.icebergEnabled} onChange={(v) => set('icebergEnabled', v)} />
               {form.icebergEnabled && (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                   <Select
                     label="Engine"
                     value={form.icebergEngine}
@@ -266,7 +266,7 @@ export const NewRun: React.FC = () => {
             </Panel>
 
             <Panel title="4 · Performance & scheduling">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 <Select label="Auto-tune" value={form.autoTune} onChange={(e) => set('autoTune', e.target.value as TriState)} options={TRI_OPTIONS} helperText="Let the planner pick task sizes." />
                 <Input label="Planned tasks" type="number" min={0} value={form.plannedTasks} onChange={(e) => set('plannedTasks', e.target.value)} />
                 <Input label="Max in-flight tasks" type="number" min={0} value={form.maxInFlightTasks} onChange={(e) => set('maxInFlightTasks', e.target.value)} />
@@ -288,7 +288,7 @@ export const NewRun: React.FC = () => {
             </Panel>
           </div>
 
-          <div className="space-y-6 lg:sticky lg:top-0 lg:self-start">
+          <div className="space-y-3 lg:sticky lg:top-0 lg:self-start">
             <Panel title="Submit">
               <div className="space-y-3">
                 <Button type="button" variant="secondary" icon={ShieldCheck} className="w-full" loading={validateMutation.isPending} onClick={() => run('validate')}>
@@ -299,7 +299,7 @@ export const NewRun: React.FC = () => {
                 </Button>
                 {validation && !formError && <ValidationSummary validation={validation} />}
                 {formError != null && (
-                  <div role="alert" className="space-y-1 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger break-words">
+                  <div role="alert" className="space-y-1 bevel-thin bg-canvas font-bold p-3 text-sm text-danger break-words">
                     <p>{formError instanceof ApiError ? formError.message : errorMessage(formError)}</p>
                     {fieldErrors.length > 0 && (
                       <ul className="list-disc pl-4">

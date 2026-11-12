@@ -11,7 +11,7 @@ export const StatusLegend: React.FC<{ counts: Record<string, number>; order?: re
       .filter((s) => !hideZero || (counts[s] ?? 0) > 0)
       .map((s) => (
         <li key={s} className="flex items-center gap-1.5 text-fg-muted">
-          <span className={clsx('h-2 w-2 rounded-sm', STATUS_STYLE[s]?.dot ?? 'bg-fg-subtle')} aria-hidden />
+          <span className={clsx('h-2 w-2', STATUS_STYLE[s]?.dot ?? 'bg-fg-subtle')} aria-hidden />
           {STATUS_STYLE[s]?.label ?? s}
           <span className="tabular-nums text-fg">{(counts[s] ?? 0).toLocaleString()}</span>
         </li>
@@ -24,14 +24,14 @@ export const StatusStackBar: React.FC<{ counts: Record<string, number>; order?: 
   const total = order.reduce((sum, s) => sum + (counts[s] ?? 0), 0);
   return (
     <div className="space-y-3">
-      <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-sm bg-raised" role="img" aria-label={order.map((s) => `${STATUS_STYLE[s]?.label ?? s} ${counts[s] ?? 0}`).join(', ')}>
+      <div className="flex h-3 w-full gap-[2px] overflow-hidden bg-raised" role="img" aria-label={order.map((s) => `${STATUS_STYLE[s]?.label ?? s} ${counts[s] ?? 0}`).join(', ')}>
         {total > 0 &&
           order
             .filter((s) => (counts[s] ?? 0) > 0)
             .map((s) => (
               <div
                 key={s}
-                className={clsx('h-full first:rounded-l-sm last:rounded-r-sm', STATUS_STYLE[s]?.bar ?? 'bg-fg-subtle')}
+                className={clsx('h-full first: last:', STATUS_STYLE[s]?.bar ?? 'bg-fg-subtle')}
                 style={{ width: `${((counts[s] ?? 0) / total) * 100}%` }}
                 title={`${STATUS_STYLE[s]?.label ?? s}: ${counts[s]} (${Math.round(((counts[s] ?? 0) / total) * 100)}%)`}
               />
@@ -59,7 +59,7 @@ export const RunsTimeline: React.FC<{ buckets: TimeBucket[]; caption: string }> 
         <button
           type="button"
           onClick={() => setAsTable((v) => !v)}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-xs text-fg-muted hover:bg-raised hover:text-accent"
+          className="inline-flex cursor-pointer items-center gap-1.5 px-2 py-1 text-xs text-fg-muted hover:bg-raised hover:text-accent"
           aria-pressed={asTable}
         >
           {asTable ? <BarChart3 className="h-3.5 w-3.5" aria-hidden /> : <Table2 className="h-3.5 w-3.5" aria-hidden />}
@@ -94,13 +94,13 @@ export const RunsTimeline: React.FC<{ buckets: TimeBucket[]; caption: string }> 
       ) : (
         <div className="relative">
           {/* Tooltip for the hovered column. */}
-          <div className={clsx('pointer-events-none absolute right-0 top-0 z-10 min-w-[9rem] rounded border border-line bg-canvas/95 px-3 py-2 text-xs shadow-lg transition-opacity', active ? 'opacity-100' : 'opacity-0')} aria-hidden>
+          <div className={clsx('pointer-events-none absolute right-0 top-0 z-10 min-w-[9rem] bevel-in bg-canvas px-3 py-2 text-xs shadow-lg transition-opacity', active ? 'opacity-100' : 'opacity-0')} aria-hidden>
             {active && (
               <>
                 <p className="mb-1 text-fg">{active.label} · {active.total} runs</p>
                 {RUN_STATUS_ORDER.filter((s) => active.counts[s]).map((s) => (
                   <p key={s} className="flex items-center gap-1.5 text-fg-muted">
-                    <span className={clsx('h-2 w-2 rounded-sm', STATUS_STYLE[s].dot)} />
+                    <span className={clsx('h-2 w-2', STATUS_STYLE[s].dot)} />
                     {STATUS_STYLE[s].label}
                     <span className="ml-auto pl-3 tabular-nums text-fg">{active.counts[s]}</span>
                   </p>
@@ -114,14 +114,14 @@ export const RunsTimeline: React.FC<{ buckets: TimeBucket[]; caption: string }> 
             {buckets.map((b, i) => (
               <div
                 key={b.start.toISOString()}
-                className={clsx('flex flex-1 cursor-default flex-col-reverse gap-[2px] rounded-t-sm', hover === i && 'bg-raised/60')}
+                className={clsx('flex flex-1 cursor-default flex-col-reverse gap-[2px]', hover === i && 'bg-raised/60')}
                 onMouseEnter={() => setHover(i)}
                 onMouseLeave={() => setHover(null)}
               >
                 {RUN_STATUS_ORDER.filter((s) => b.counts[s]).map((s, idx, arr) => (
                   <div
                     key={s}
-                    className={clsx(STATUS_STYLE[s].bar, idx === arr.length - 1 && 'rounded-t-sm')}
+                    className={clsx(STATUS_STYLE[s].bar, idx === arr.length - 1 && '')}
                     style={{ height: `${((b.counts[s] ?? 0) / max) * 100}%` }}
                   />
                 ))}
@@ -130,7 +130,7 @@ export const RunsTimeline: React.FC<{ buckets: TimeBucket[]; caption: string }> 
           </div>
           <div className="mt-1.5 flex gap-[2px] text-[10px] text-fg-subtle">
             {buckets.map((b, i) => (
-              <span key={b.start.toISOString()} className="flex-1 truncate text-center">
+              <span key={b.start.toISOString()} className="flex-1 overflow-visible whitespace-nowrap text-left">
                 {i % labelEvery === 0 ? b.label : ''}
               </span>
             ))}
@@ -155,8 +155,8 @@ export const BarList: React.FC<{ items: Array<{ key: string; label: React.ReactN
               <span className="min-w-0 truncate text-fg">{label}</span>
               <span className="tabular-nums text-fg-muted">{item.value.toLocaleString()}</span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-raised">
-              <div className={clsx('h-full rounded-full', item.tone ?? 'bg-accent')} style={{ width: `${(item.value / max) * 100}%` }} />
+            <div className="bevel-in h-3 w-full bg-canvas">
+              <div className={clsx('h-full', item.tone ?? 'bg-accent')} style={{ width: `${(item.value / max) * 100}%` }} />
             </div>
           </li>
         );

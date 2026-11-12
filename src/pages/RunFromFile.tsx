@@ -119,19 +119,19 @@ export const RunFromFile: React.FC = () => {
   const nextStep = STEPS.find((s) => !done[s.id])?.id;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageTitle
         title="Run from file"
         subtitle={
           <>
-            Start a run from an <code className="rounded bg-raised px-1 py-0.5 text-xs">orabbit-client</code> run file (YAML or JSON), exactly like{' '}
-            <code className="rounded bg-raised px-1 py-0.5 text-xs">orabbit-client run submit --file run.yaml</code>: the connections and job are created or updated by name, then the job starts.
+            Start a run from an <code className=" bg-raised px-1 py-0.5 text-xs">orabbit-client</code> run file (YAML or JSON), exactly like{' '}
+            <code className=" bg-raised px-1 py-0.5 text-xs">orabbit-client run submit --file run.yaml</code>: the connections and job are created or updated by name, then the job starts.
           </>
         }
       />
 
       <QueryState isLoading={enginesQuery.isLoading} error={enginesQuery.error} onRetry={() => enginesQuery.refetch()}>
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid gap-2.5 lg:grid-cols-5">
           <div className="space-y-4 lg:col-span-3">
             <div
               onDragOver={(e) => {
@@ -146,11 +146,11 @@ export const RunFromFile: React.FC = () => {
                 if (file) load(file);
               }}
               className={clsx(
-                'flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors',
+                'flex flex-col items-center justify-center gap-3 border-2 border-dashed px-6 py-8 text-center transition-colors',
                 dragging ? 'border-accent bg-accent/5' : 'border-line bg-card'
               )}
             >
-              <div className="rounded-full bg-raised p-3">
+              <div className=" bg-raised p-3">
                 <FileUp className="h-5 w-5 text-fg-muted" aria-hidden />
               </div>
               <div>
@@ -203,7 +203,7 @@ export const RunFromFile: React.FC = () => {
               {!parsed && <p className="text-sm text-fg-subtle">Load or paste a run file to see the plan.</p>}
 
               {parsed?.kind === 'error' && (
-                <div role="alert" className="flex gap-2.5 rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
+                <div role="alert" className="flex gap-2.5 bevel-thin bg-canvas font-bold p-3 text-sm text-danger">
                   <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden />
                   <span className="break-words">{parsed.message}</span>
                 </div>
@@ -238,7 +238,7 @@ export const RunFromFile: React.FC = () => {
                   </dl>
 
                   {plan.warnings.length > 0 && (
-                    <ul className="space-y-1.5 rounded-md border border-warn/30 bg-warn/10 p-3 text-xs text-warn">
+                    <ul className="space-y-1.5 bevel-thin bg-canvas p-3 text-xs text-warn">
                       {plan.warnings.map((w) => (
                         <li key={w} className="flex gap-2">
                           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden />
@@ -270,7 +270,7 @@ export const RunFromFile: React.FC = () => {
               )}
 
               {runError && (
-                <p role="alert" className="mt-4 break-words rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
+                <p role="alert" className="mt-4 break-words bevel-thin bg-canvas font-bold p-3 text-sm text-danger">
                   {runError}
                 </p>
               )}

@@ -34,7 +34,7 @@ export const Connections: React.FC = () => {
   const pagination = usePagination(connections);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageTitle
         title="Connections"
         subtitle="Saved sources and S3 targets used by jobs. Secrets are encrypted by the master and never shown again."
@@ -133,7 +133,7 @@ const ConnectionFormModal: React.FC<{ connection: Connection | null; onClose: ()
         }}
       >
         <Input label="Name" value={form.name} onChange={(e) => set('name', e.target.value)} required />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           <Select label="Kind" value={form.kind} onChange={(e) => set('kind', e.target.value as ConnectionKind)} options={[{ label: 'source', value: 'source' }, { label: 'target (S3)', value: 'target' }]} />
           <Input label="Engine" list="source-engine-list" value={form.engine} onChange={(e) => set('engine', e.target.value)} placeholder={form.kind === 'target' ? 's3' : 'postgres'} required />
           <datalist id="source-engine-list">

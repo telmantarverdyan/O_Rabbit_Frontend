@@ -58,7 +58,7 @@ export const RunsDashboard: React.FC<{ jobNames?: Record<string, string> }> = ({
   return (
     <section className="space-y-4" aria-label="Runs dashboard">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-fg-subtle">
+        <p className="desktop-text text-xs">
           {stats.runs.length.toLocaleString()} runs in the last {cfg.label}
           {truncated && ` (latest ${DASHBOARD_RUN_LIMIT} only)`}
         </p>
@@ -66,7 +66,7 @@ export const RunsDashboard: React.FC<{ jobNames?: Record<string, string> }> = ({
       </div>
 
       <QueryState isLoading={query.isLoading} error={query.error} onRetry={() => query.refetch()}>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
           <MetricCard title="Runs" value={stats.runs.length.toLocaleString()} subtitle={`${stats.active} active now`} icon={Activity} />
           <MetricCard title="Success rate" value={stats.rate === undefined ? '—' : `${stats.rate}%`} subtitle="of finished runs" icon={CheckCircle2} />
           <MetricCard title="Failed" value={(stats.counts.FAILED ?? 0).toLocaleString()} subtitle={`${stats.counts.CANCELED ?? 0} canceled`} icon={XCircle} color="crimson" />
@@ -74,7 +74,7 @@ export const RunsDashboard: React.FC<{ jobNames?: Record<string, string> }> = ({
           <MetricCard title="Slow runs" value={formatSeconds(stats.p95)} subtitle="p95 duration" icon={Gauge} className="col-span-2 lg:col-span-1" />
         </div>
 
-        <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="grid items-start gap-2.5 lg:grid-cols-3">
           <Panel title="Runs over time" description={`Per ${cfg.unit}, by status`} className="lg:col-span-2">
             <RunsTimeline buckets={stats.buckets} caption={`Runs per ${cfg.unit} over the last ${cfg.label}`} />
           </Panel>

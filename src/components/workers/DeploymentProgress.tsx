@@ -75,7 +75,7 @@ export const DeploymentProgress: React.FC<{ watch: DeploymentWatch }> = ({ watch
         )}
       </div>
       {stream.error && <p role="alert" className="text-xs text-warn">Lost the live log: {stream.error}. The deployment keeps running; reopen it from the deployments list.</p>}
-      <div ref={logRef} className="h-72 overflow-y-auto overflow-x-hidden rounded-md border border-line bg-canvas p-3 font-mono text-xs leading-relaxed" role="log" aria-label="Deployment log">
+      <div ref={logRef} className="h-72 overflow-y-auto overflow-x-hidden bevel-in bg-canvas p-3 font-mono text-xs leading-relaxed" role="log" aria-label="Deployment log">
         {lines.length ? (
           lines.map((l) => (
             <p key={l.seq} className={`whitespace-pre-wrap break-words ${l.err ? 'text-warn' : 'text-fg'}`}>{l.text}</p>

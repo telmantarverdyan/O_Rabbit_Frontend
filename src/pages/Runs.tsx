@@ -140,7 +140,7 @@ export const Runs: React.FC = () => {
   const runs = pageRuns.filter((r) => !status || r.status === status);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageTitle
         title="Runs"
         subtitle="Run analytics and every export run on this master, newest first."
@@ -177,11 +177,11 @@ export const Runs: React.FC = () => {
                 aria-checked={status === s}
                 onClick={() => setStatus(s)}
                 className={clsx(
-                  'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-xs transition-colors',
-                  status === s ? 'border-accent/60 bg-accent/10 text-accent' : 'border-line text-fg-muted hover:border-fg-subtle hover:text-fg'
+                  'inline-flex h-7 cursor-pointer items-center gap-1.5 px-3 text-xs transition-colors',
+                  status === s ? 'bevel-in bg-raised font-bold text-fg' : 'bevel-out bg-card text-fg active:bevel-in'
                 )}
               >
-                {s && <span className={clsx('h-1.5 w-1.5 rounded-full', STATUS_STYLE[s]?.dot)} aria-hidden />}
+                {s && <span className={clsx('h-1.5 w-1.5', STATUS_STYLE[s]?.dot)} aria-hidden />}
                 {s ? STATUS_STYLE[s]?.label ?? s : 'All'}
                 <span className="tabular-nums text-fg-subtle">{n}</span>
               </button>

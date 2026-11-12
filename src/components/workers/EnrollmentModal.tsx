@@ -29,7 +29,7 @@ export const EnrollmentModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
       {token ? (
         <div className="space-y-3">
           <p className="text-sm text-warn">Copy it now. The master stores only a hash and cannot show it again.</p>
-          <pre className="whitespace-pre-wrap break-all rounded-md border border-line bg-canvas p-3 font-mono text-xs text-fg">{token}</pre>
+          <pre className="whitespace-pre-wrap break-all bevel-in bg-canvas p-3 font-mono text-xs text-fg">{token}</pre>
           <div className="flex justify-end gap-2">
             <Button
               variant="secondary"
@@ -50,7 +50,7 @@ export const EnrollmentModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
           }}
         >
           <Input label="Pool" value={pool} onChange={(e) => setPool(e.target.value)} helperText="Optional. Runs with this worker_pool go only to these workers." />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             <Input label="Valid for (minutes)" type="number" min={1} value={ttlMinutes} onChange={(e) => setTtlMinutes(e.target.value)} />
             <Input label="Max uses" type="number" min={1} value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
           </div>

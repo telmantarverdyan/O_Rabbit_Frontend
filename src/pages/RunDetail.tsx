@@ -98,7 +98,7 @@ export const RunDetail: React.FC = () => {
   const hasRegistration = !!run && (!!run.catalog_status || !!run.registration_id || run.registration_attempt > 0 || !!run.registration_error_class);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <Link to="/runs" className="inline-flex items-center gap-1 text-xs text-fg-muted hover:text-fg">
         <ArrowLeft className="h-3.5 w-3.5" /> All runs
       </Link>
@@ -140,7 +140,7 @@ export const RunDetail: React.FC = () => {
             />
 
             {run.error_summary && (
-              <div role="alert" className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
+              <div role="alert" className="bevel-thin bg-canvas font-bold p-4 text-sm text-danger">
                 <p className="font-semibold">
                   {run.failure_phase ? `Failed during ${run.failure_phase}` : 'Error'}
                   {run.failure_class ? ` · ${run.failure_class}` : ''}
@@ -149,19 +149,19 @@ export const RunDetail: React.FC = () => {
               </div>
             )}
             {run.operator_action_required && (
-              <div className="rounded-lg border border-warn/30 bg-warn/10 p-4 text-sm text-warn">
+              <div className="bevel-thin bg-canvas p-4 text-sm text-warn">
                 This run needs an operator. See the diagnosis below for the suggested action.
               </div>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard title="Tasks" value={p ? `${p.tasks_succeeded}/${p.tasks_total}` : `${tasks.length}`} subtitle={p ? `${p.tasks_running} running · ${p.tasks_failed} failed` : undefined} icon={Rows3} />
               <MetricCard title="Rows" value={formatNumber(rowsTotal)} subtitle={artifactRows > (p?.rows_read ?? 0) ? 'from committed files' : 'read from source'} icon={Database} />
               <MetricCard title="Written" value={formatBytes(bytesTotal)} subtitle={`${artifactCount} Parquet file${artifactCount === 1 ? '' : 's'}`} icon={FileText} />
               <MetricCard title="Duration" value={formatDuration(run.started_at, run.finished_at)} subtitle={p ? `${p.workers_active} active workers` : undefined} icon={Clock} />
             </div>
 
-            <div className="grid items-start gap-6 lg:grid-cols-3">
+            <div className="grid items-start gap-2.5 lg:grid-cols-3">
               <Panel title="Details" className="lg:col-span-2">
                 <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
                   <Field label="Job">
@@ -201,7 +201,7 @@ export const RunDetail: React.FC = () => {
                 )}
               </Panel>
 
-              <div className="space-y-6">
+              <div className="space-y-3">
                 <Panel title="Task progress">
                   {p ? (
                     <TaskProgressBar succeeded={p.tasks_succeeded} running={p.tasks_running} failed={p.tasks_failed} pending={p.tasks_pending} canceled={p.tasks_canceled} />
@@ -245,7 +245,7 @@ export const RunDetail: React.FC = () => {
               >
                 <ul className="divide-y divide-line/70">
                   {run.type_warnings!.map((w) => (
-                    <li key={w.column} className="grid gap-1 px-5 py-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,14rem)_minmax(0,1fr)] sm:gap-4">
+                    <li key={w.column} className="grid gap-1 px-5 py-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,14rem)_minmax(0,1fr)] sm:gap-2.5">
                       <span className="truncate font-mono text-sm text-fg" title={w.column}>{w.column}</span>
                       <span className="break-words font-mono text-xs text-fg-muted">
                         {w.source_type || w.logical_type} <span className="text-fg-subtle">→</span> {w.target_type || w.storage_type}

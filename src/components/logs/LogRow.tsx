@@ -17,7 +17,7 @@ const Highlight: React.FC<{ text: string; query: string }> = ({ text, query }) =
   <>
     {highlightParts(text, query).map((p, i) =>
       p.match ? (
-        <mark key={i} className="rounded-sm bg-warn/30 px-0.5 text-fg">{p.text}</mark>
+        <mark key={i} className=" bg-warn/30 px-0.5 text-fg">{p.text}</mark>
       ) : (
         <React.Fragment key={i}>{p.text}</React.Fragment>
       )
@@ -76,7 +76,7 @@ export const LogRow: React.FC<LogRowProps> = ({ entry: e, query, wrap, expanded,
           <ChevronRight className={clsx('h-3.5 w-3.5 transition-transform', expanded && 'rotate-90')} aria-hidden />
         </button>
         <time dateTime={e.ts} title={e.ts} className="w-[6.6rem] flex-shrink-0 tabular-nums text-fg-subtle">{formatLogTime(e.ts)}</time>
-        <span className={clsx('w-[4.4rem] flex-shrink-0 rounded px-1 text-center text-[10px] font-semibold uppercase leading-[18px]', style.badge)}>{e.level === 'WARN' ? 'warning' : e.level.toLowerCase()}</span>
+        <span className={clsx('w-[4.4rem] flex-shrink-0 px-1 text-center text-[10px] font-semibold uppercase leading-[18px]', style.badge)}>{e.level === 'WARN' ? 'warning' : e.level.toLowerCase()}</span>
         <span className="w-24 flex-shrink-0 truncate text-fg-subtle" title={e.source}>{e.source}</span>
         <span className={clsx('min-w-0 flex-1 cursor-text', wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre', e.level === 'DEBUG' ? 'text-fg-muted' : 'text-fg')} onDoubleClick={onToggleExpand}>
           <Highlight text={wrap ? e.message : firstLine} query={query} />
@@ -99,18 +99,18 @@ export const LogRow: React.FC<LogRowProps> = ({ entry: e, query, wrap, expanded,
             {e.workerId && <div><dt className="inline text-fg-subtle">worker </dt><dd className="inline"><Link className="text-accent hover:underline" to={`/workers?q=${encodeURIComponent(e.workerId)}`}>{e.workerId}</Link></dd></div>}
           </dl>
           {(multiline || looksLikeStackTrace(e.message)) && (
-            <pre className={clsx('max-h-80 overflow-auto rounded border border-line/60 bg-canvas p-2 leading-relaxed', looksLikeStackTrace(e.message) ? 'text-danger' : 'text-fg')}>
+            <pre className={clsx('max-h-80 overflow-auto bevel-in bg-canvas p-2 leading-relaxed', looksLikeStackTrace(e.message) ? 'text-danger' : 'text-fg')}>
               <Highlight text={e.message} query={query} />
             </pre>
           )}
           {e.fields && (
-            <div className="rounded border border-line/60 bg-canvas p-2">
+            <div className="bevel-in bg-canvas p-2">
               <JsonView value={e.fields} query={query} />
             </div>
           )}
           <div className="flex flex-wrap gap-2 font-sans">
-            <button type="button" className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-fg-muted hover:border-accent/60 hover:text-accent" onClick={() => onCopy(e.message, 'Message')}>Copy message</button>
-            <button type="button" className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-fg-muted hover:border-accent/60 hover:text-accent" onClick={() => onCopy(JSON.stringify({ ...e, key: undefined }, null, 2), 'Entry')}>Copy entry as JSON</button>
+            <button type="button" className="cursor-pointer border border-line px-2 py-1 text-xs text-fg-muted hover:border-accent/60 hover:text-accent" onClick={() => onCopy(e.message, 'Message')}>Copy message</button>
+            <button type="button" className="cursor-pointer border border-line px-2 py-1 text-xs text-fg-muted hover:border-accent/60 hover:text-accent" onClick={() => onCopy(JSON.stringify({ ...e, key: undefined }, null, 2), 'Entry')}>Copy entry as JSON</button>
           </div>
         </div>
       )}

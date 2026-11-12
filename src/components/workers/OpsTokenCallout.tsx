@@ -33,7 +33,7 @@ export const OpsTokenCallout: React.FC<{ compact?: boolean }> = ({ compact }) =>
       {!compact && (
         <p className="text-sm text-fg-muted">
           Creating workers runs commands on your servers over SSH, so the master protects it with a separate token,{' '}
-          <code className="rounded bg-raised px-1 text-xs">ORABBIT_REMOTE_OPS_AUTH_TOKEN</code>. It is kept only for this tab.
+          <code className=" bg-raised px-1 text-xs">ORABBIT_REMOTE_OPS_AUTH_TOKEN</code>. It is kept only for this tab.
         </p>
       )}
       <div className="flex flex-wrap items-end gap-2">

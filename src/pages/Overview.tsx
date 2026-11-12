@@ -42,7 +42,7 @@ export const Overview: React.FC = () => {
   const tile = (v: number | string) => (metricsQuery.isLoading ? '…' : metricsQuery.error ? '—' : v);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageTitle
         title="Overview"
         subtitle="Live state of this master, its workers and recent runs."
@@ -54,7 +54,7 @@ export const Overview: React.FC = () => {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard title="Active runs" value={tile(activeRuns)} subtitle="planning · running · committing" icon={Activity} color="cyan" />
         <MetricCard title="Success rate" value={tile(rate === undefined ? '—' : `${rate}%`)} subtitle="all finished runs" icon={CheckCircle2} />
         <MetricCard title="Total runs" value={tile(allRuns.toLocaleString())} subtitle={`${(runTotals.FAILED ?? 0).toLocaleString()} failed`} icon={Layers} />
@@ -64,12 +64,12 @@ export const Overview: React.FC = () => {
       </div>
 
       {metricsQuery.error != null && (
-        <p role="alert" className="rounded-md border border-warn/30 bg-warn/10 px-4 py-2.5 text-sm text-warn">
+        <p role="alert" className="bevel-thin bg-canvas px-4 py-2.5 text-sm text-warn">
           Could not read /metrics, so totals are unavailable. Recent-run charts below still work.
         </p>
       )}
 
-      <div className="grid items-start gap-4 lg:grid-cols-3">
+      <div className="grid items-start gap-2.5 lg:grid-cols-3">
         <Panel title="Runs, last 24 hours" description="Per hour, by status" className="lg:col-span-2">
           <QueryState isLoading={runsQuery.isLoading} error={runsQuery.error} onRetry={() => runsQuery.refetch()}>
             <RunsTimeline buckets={last24h} caption="Runs per hour over the last 24 hours" />
@@ -88,7 +88,7 @@ export const Overview: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-3">
+      <div className="grid items-start gap-2.5 lg:grid-cols-3">
         <Panel title="Workers" description="Active in the last 30 seconds" actions={<Link to="/workers" className="text-xs text-accent hover:underline">All workers →</Link>}>
           <QueryState isLoading={workersQuery.isLoading} error={workersQuery.error} isEmpty={!workers.length} emptyMessage="No live workers. Runs will wait.">
             <ul className="space-y-2">

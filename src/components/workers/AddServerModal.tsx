@@ -131,7 +131,7 @@ export const AddServerModal: React.FC<{ onClose: () => void; onCreated?: (server
   return (
     <Modal isOpen onClose={onClose} title="Add a server" subtitle="A Linux host with Docker and an O_Rabbit checkout, reachable by the master over SSH." maxWidth="2xl">
       <form className="space-y-4" onSubmit={submit} noValidate>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           <Input label="Name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="etl-node-1" required error={errors.name} />
           <Input label="Host" icon={ServerIcon} value={form.host} onChange={(e) => set('host', e.target.value)} placeholder="10.0.0.12" required error={errors.host} />
           <Input label="SSH user" value={form.user} onChange={(e) => set('user', e.target.value)} required error={errors.user} />
@@ -148,7 +148,7 @@ export const AddServerModal: React.FC<{ onClose: () => void; onCreated?: (server
           options={[{ label: 'Private key', value: 'private_key' }, { label: 'Password', value: 'password' }]}
         />
         {form.authType === 'private_key' ? (
-          <div className="grid gap-4">
+          <div className="grid gap-2.5">
             <TextArea label="Private key" rows={5} value={form.privateKey} onChange={(e) => set('privateKey', e.target.value)} placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" autoComplete="off" />
             {errors.privateKey && <p className="-mt-2 text-xs text-danger">{errors.privateKey}</p>}
             <Input label="Key passphrase (if any)" type="password" value={form.passphrase} onChange={(e) => set('passphrase', e.target.value)} autoComplete="off" />
@@ -168,7 +168,7 @@ export const AddServerModal: React.FC<{ onClose: () => void; onCreated?: (server
         />
         <p className="text-xs text-fg-subtle">The credential is encrypted by the master and never shown again.</p>
 
-        {submitError && <p role="alert" className="break-words rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{submitError}</p>}
+        {submitError && <p role="alert" className="break-words bevel-thin bg-canvas font-bold p-3 text-sm text-danger">{submitError}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saving}>Add and check</Button>

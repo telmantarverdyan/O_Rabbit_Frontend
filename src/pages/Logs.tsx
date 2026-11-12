@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { ArrowDownToLine, Copy, Download, Eraser, History, Maximize2, Minimize2, Pause, Play, RefreshCw, WrapText } from 'lucide-react';
+import { ArrowDownToLine, Copy, Download, Eraser, History, Maximize2, Minimize2, Pause, Play, RefreshCw, ScrollText, WrapText } from 'lucide-react';
 import { CONTAINER_TAIL, fetchContainers, fetchLogPage, LogFilter, LogSource, useLogStream } from '@/api/logs';
 import { fetchServers } from '@/api/remoteOps';
 import { errorMessage } from '@/api/client';
@@ -12,6 +12,7 @@ import { PageTitle, Segmented } from '@/components/common/QueryState';
 import { useToast } from '@/components/common/Toast';
 import { FilterValues, LogFilters, TIME_PRESETS, TimePreset } from '@/components/logs/LogFilters';
 import { LogRow } from '@/components/logs/LogRow';
+import { TitleButton } from '@/components/common/Window';
 import { VirtualLogList } from '@/components/logs/VirtualLogList';
 import { OpsTokenCallout } from '@/components/workers/OpsTokenCallout';
 import { LOG_LEVELS, LogEntry, LogLevel, matchesFilter, toJson, toText } from '@/utils/logs';
@@ -307,19 +308,22 @@ export const Logs: React.FC = () => {
       <PageTitle title="Logs" subtitle="Live and historical logs from runs, the master and service containers. Secrets are masked by the master." />
 
       <div className="flex flex-wrap items-end gap-3">
-        <Segmented<SourceKind> label="Source" value={sourceKind} onChange={(v) => update({ source: v })} options={SOURCES} />
+        <div className="space-y-1">
+          <span className="desktop-text block text-xs">Source</span>
+          <Segmented<SourceKind> value={sourceKind} onChange={(v) => update({ source: v })} options={SOURCES} />
+        </div>
         {sourceKind === 'container' && hasOps && (
           <>
             <label className="space-y-1.5">
-              <span className="block text-xs font-medium text-fg-muted">Server</span>
-              <select value={server} onChange={(e) => update({ server: e.target.value, container: '' })} className="h-9 cursor-pointer rounded-md border border-line bg-canvas px-2 text-sm text-fg focus:border-accent focus:outline-none">
+              <span className="desktop-text block text-xs">Server</span>
+              <select value={server} onChange={(e) => update({ server: e.target.value, container: '' })} className="h-9 cursor-pointer bevel-in bg-canvas px-2 text-sm text-fg focus:outline-none">
                 <option value="" className="bg-card">{serversQuery.isLoading ? 'Loading…' : servers.length ? 'Choose a server' : 'No servers registered'}</option>
                 {servers.map((s) => <option key={s.id} value={s.id} className="bg-card">{s.name}</option>)}
               </select>
             </label>
             <label className="space-y-1.5">
-              <span className="block text-xs font-medium text-fg-muted">Container</span>
-              <select value={container} onChange={(e) => update({ container: e.target.value })} disabled={!server} className="h-9 max-w-xs cursor-pointer rounded-md border border-line bg-canvas px-2 text-sm text-fg focus:border-accent focus:outline-none disabled:opacity-50">
+              <span className="desktop-text block text-xs">Container</span>
+              <select value={container} onChange={(e) => update({ container: e.target.value })} disabled={!server} className="h-9 max-w-xs cursor-pointer bevel-in bg-canvas px-2 text-sm text-fg focus:outline-none disabled:opacity-50">
                 <option value="" className="bg-card">{containersQuery.isLoading ? 'Loading…' : 'Choose a container'}</option>
                 {[...containers]
                   .sort((a, b) => Number(/orabbit/.test(b.name)) - Number(/orabbit/.test(a.name)) || a.name.localeCompare(b.name))
@@ -331,14 +335,27 @@ export const Logs: React.FC = () => {
       </div>
 
       {sourceKind === 'container' && !hasOps ? (
-        <section className="rounded-md border border-line bg-card p-5">
+        <section className="bevel-out bg-card p-5">
           <OpsTokenCallout />
         </section>
       ) : (
         <section
-          className={clsx('flex flex-col rounded-md border border-line bg-card', fullscreen && 'fixed inset-2 z-50 shadow-2xl shadow-black/60')}
+          className={clsx('flex flex-col bevel-out bg-card', fullscreen && 'fixed inset-2 z-50 shadow-2xl shadow-black/60')}
           aria-label="Log viewer"
         >
+          <header className="title-bar m-[2px] flex h-[26px] flex-shrink-0 items-center justify-between gap-2 px-1.5">
+            <h2 className="flex min-w-0 items-center gap-1.5 truncate font-pixel text-sm font-semibold uppercase tracking-wide">
+              <ScrollText className="h-4 w-4 flex-shrink-0" aria-hidden />
+              <span className="truncate">Log viewer · {SOURCES.find((x) => x.value === sourceKind)?.label}{source?.kind === 'container' ? ` · ${source.label}` : ''}</span>
+            </h2>
+            <div className="flex flex-shrink-0 gap-[2px]">
+              <TitleButton label="Minimize"><span className="mt-[7px] block h-[2px] w-[8px] bg-fg" /></TitleButton>
+              {/* The maximize box really maximizes: it toggles full screen. */}
+              <TitleButton label={fullscreen ? 'Restore' : 'Full screen'} onClick={() => setFullscreen((f) => !f)}>
+                <span className="block h-[8px] w-[9px] border border-t-2 border-fg" />
+              </TitleButton>
+            </div>
+          </header>
           <div className="space-y-2 border-b border-line p-3">
             <LogFilters values={values} onChange={onFilterChange} entityFilters={sourceKind === 'events'} timeFilters={sourceKind !== 'container'} />
             <div className="flex flex-wrap items-center gap-1.5">
@@ -379,7 +396,7 @@ export const Logs: React.FC = () => {
             </span>
             {source && (
               <span className={clsx('flex items-center gap-1.5', streamTone)} title={stream.error || undefined}>
-                <span className={clsx('h-1.5 w-1.5 rounded-full bg-current', live && stream.state === 'live' && 'motion-safe:animate-pulse')} aria-hidden />
+                <span className={clsx('h-1.5 w-1.5 bg-current', live && stream.state === 'live' && 'motion-safe:animate-pulse')} aria-hidden />
                 {streamLabel}
                 {stream.error && stream.state !== 'live' && <span className="text-fg-subtle">· {stream.error}</span>}
               </span>
@@ -397,7 +414,7 @@ export const Logs: React.FC = () => {
               <p className="m-auto text-sm text-fg-subtle">Choose a server and a container to see its logs.</p>
             ) : loading ? (
               <div className="space-y-1.5 p-3" aria-busy="true" aria-label="Loading logs">
-                {Array.from({ length: 10 }, (_, i) => <div key={i} className="h-5 animate-pulse rounded bg-raised/60" style={{ width: `${60 + ((i * 37) % 40)}%` }} />)}
+                {Array.from({ length: 10 }, (_, i) => <div key={i} className="h-5 animate-pulse bg-raised/60" style={{ width: `${60 + ((i * 37) % 40)}%` }} />)}
               </div>
             ) : error ? (
               <div role="alert" className="m-auto max-w-lg space-y-3 p-6 text-center">
@@ -408,7 +425,7 @@ export const Logs: React.FC = () => {
               <p className="m-auto text-sm text-fg-subtle">{entries.length ? 'No entries match the filters.' : live ? 'No logs yet. New entries appear here live.' : 'No logs.'}</p>
             ) : (
               <VirtualLogList
-                className="min-h-0 flex-1 bg-canvas/40"
+                className="bevel-in mx-[2px] min-h-0 flex-1 bg-canvas"
                 items={visible}
                 getKey={(e) => e.key}
                 wrap={wrap}
@@ -440,7 +457,7 @@ export const Logs: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFollow(true)}
-                className="absolute bottom-3 right-5 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-accent/60 bg-card px-3 py-1.5 text-xs text-accent shadow-lg hover:bg-raised"
+                className="absolute bottom-3 right-5 inline-flex cursor-pointer items-center gap-1.5 border border-accent/60 bg-card px-3 py-1.5 text-xs text-accent shadow-lg hover:bg-raised"
               >
                 <ArrowDownToLine className="h-3.5 w-3.5" aria-hidden /> Jump to latest
               </button>
@@ -457,7 +474,7 @@ export const Logs: React.FC = () => {
                 if (e.key === 'ArrowDown') setHeight((h) => Math.min(h + 40, window.innerHeight - 120));
                 if (e.key === 'ArrowUp') setHeight((h) => Math.max(h - 40, 240));
               }}
-              className="h-2 cursor-row-resize rounded-b-md border-t border-line bg-raised/40 hover:bg-accent/20 focus:bg-accent/20"
+              className="h-2 cursor-row-resize border-t border-line bg-raised/40 hover:bg-accent/20 focus:bg-accent/20"
             />
           )}
         </section>

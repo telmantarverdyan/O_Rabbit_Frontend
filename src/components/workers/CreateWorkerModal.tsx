@@ -98,7 +98,7 @@ export const CreateWorkerModal: React.FC<{ onClose: () => void; currentWorkers: 
                 <Button type="button" variant="secondary" icon={Plus} onClick={() => setAddingServer(true)}>Add server</Button>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 <Input
                   label="Worker name"
                   value={form.name}
@@ -119,9 +119,9 @@ export const CreateWorkerModal: React.FC<{ onClose: () => void; currentWorkers: 
                 />
               </div>
 
-              <fieldset className="space-y-3 rounded-md border border-line p-4">
+              <fieldset className="space-y-3 border border-line p-4">
                 <legend className="px-1 text-xs font-medium text-fg-muted">Resource limits per worker (optional)</legend>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2.5 sm:grid-cols-2">
                   <Input label="CPU limit" inputMode="decimal" value={form.cpus} onChange={(e) => set('cpus', e.target.value)} placeholder="no limit" error={errors.cpus} helperText="CPUs, e.g. 1.5" />
                   <div className="flex items-end gap-2">
                     <div className="min-w-0 flex-1">
@@ -135,10 +135,10 @@ export const CreateWorkerModal: React.FC<{ onClose: () => void; currentWorkers: 
               </fieldset>
 
               <p className="text-xs text-fg-subtle">
-                Master address, worker token and TLS come from <code className="rounded bg-raised px-1">.env.worker</code> on the server.
+                Master address, worker token and TLS come from <code className=" bg-raised px-1">.env.worker</code> on the server.
               </p>
 
-              {submitError && <p role="alert" className="break-words rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{submitError}</p>}
+              {submitError && <p role="alert" className="break-words bevel-thin bg-canvas font-bold p-3 text-sm text-danger">{submitError}</p>}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
                 <Button type="submit" icon={Rocket} loading={mutation.isPending}>Create workers</Button>

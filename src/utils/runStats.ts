@@ -5,14 +5,15 @@ export const RUN_STATUS_ORDER = ['SUCCEEDED', 'RUNNING', 'COMMITTING', 'PLANNING
 
 /** Status colors (CSS classes) and labels. Charts always show the label too, never color alone. */
 export const STATUS_STYLE: Record<string, { label: string; bar: string; dot: string }> = {
-  SUCCEEDED: { label: 'Succeeded', bar: 'bg-accent', dot: 'bg-accent' },
-  RUNNING: { label: 'Running', bar: 'bg-info', dot: 'bg-info' },
-  COMMITTING: { label: 'Committing', bar: 'bg-info/60', dot: 'bg-info/60' },
-  PLANNING: { label: 'Planning', bar: 'bg-warn', dot: 'bg-warn' },
-  PENDING: { label: 'Pending', bar: 'bg-warn', dot: 'bg-warn' },
-  QUARANTINED: { label: 'Quarantined', bar: 'bg-danger/60', dot: 'bg-danger/60' },
+  // Win9x-style solid colors; every chart also shows the label, never color alone.
+  SUCCEEDED: { label: 'Succeeded', bar: 'bg-[#008000]', dot: 'bg-[#008000]' },
+  RUNNING: { label: 'Running', bar: 'bg-accent', dot: 'bg-accent' },
+  COMMITTING: { label: 'Committing', bar: 'bg-[#4a7fd0]', dot: 'bg-[#4a7fd0]' },
+  PLANNING: { label: 'Planning', bar: 'bg-[#c8a000]', dot: 'bg-[#c8a000]' },
+  PENDING: { label: 'Pending', bar: 'bg-[#c8a000]', dot: 'bg-[#c8a000]' },
   FAILED: { label: 'Failed', bar: 'bg-danger', dot: 'bg-danger' },
-  CANCELED: { label: 'Canceled', bar: 'bg-fg-subtle', dot: 'bg-fg-subtle' },
+  QUARANTINED: { label: 'Quarantined', bar: 'bg-[#800080]', dot: 'bg-[#800080]' },
+  CANCELED: { label: 'Canceled', bar: 'bg-line', dot: 'bg-line' },
 };
 
 export function countByStatus(runs: Run[]): Record<string, number> {

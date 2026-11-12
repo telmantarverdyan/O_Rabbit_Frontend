@@ -46,7 +46,7 @@ export const Jobs: React.FC = () => {
   const pagination = usePagination(jobs);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageTitle
         title="Jobs"
         subtitle="Stored export definitions that use saved connections. Start one with Run."
@@ -159,7 +159,7 @@ const JobFormModal: React.FC<{ job: Job | null; connections: Connection[]; onClo
   return (
     <Modal isOpen onClose={onClose} title={job ? `Edit job ${job.name}` : 'New job'} maxWidth="2xl">
       <form
-        className="grid gap-4 sm:grid-cols-2"
+        className="grid gap-2.5 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
           mutation.mutate();
@@ -191,7 +191,7 @@ const JobFormModal: React.FC<{ job: Job | null; connections: Connection[]; onClo
           />
         </div>
         {mutation.error && (
-          <div role="alert" className="sm:col-span-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger break-words">
+          <div role="alert" className="sm:col-span-2 bevel-thin bg-canvas font-bold p-3 text-sm text-danger break-words">
             <p>{mutation.error instanceof ApiError ? mutation.error.message : errorMessage(mutation.error)}</p>
             {fieldErrors.length > 0 && (
               <ul className="mt-1 list-disc pl-4">

@@ -64,7 +64,7 @@ export const ProvisioningPanel: React.FC<{ onDeploy: (serverId: string) => void 
   }
 
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-2">
+    <div className="grid items-start gap-2.5 xl:grid-cols-2">
       <Panel
         title="Servers"
         description="Hosts the master can deploy workers to over SSH"

@@ -62,7 +62,7 @@ export const Workers: React.FC = () => {
   const tile = (n: number) => (workersQuery.isLoading ? '…' : n);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageTitle
         title="Workers"
         subtitle="Worker processes that pull tasks from this master. Create them on your servers, or enroll ones you start yourself."
@@ -74,7 +74,7 @@ export const Workers: React.FC = () => {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <MetricCard title="Active" value={tile(counts.ACTIVE)} subtitle="heartbeat < 30 s" icon={Activity} />
         <MetricCard title="Inactive" value={tile(counts.INACTIVE)} subtitle="silent < 5 min" icon={Clock} color={counts.INACTIVE ? 'amber' : 'emerald'} />
         <MetricCard title="Offline" value={tile(counts.OFFLINE)} subtitle="silent longer" icon={PowerOff} color="slate" />
@@ -100,8 +100,8 @@ export const Workers: React.FC = () => {
                 pagination.setPage(1);
               }}
               className={clsx(
-                'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-xs transition-colors',
-                filter === f ? 'border-accent/60 bg-accent/10 text-accent' : 'border-line text-fg-muted hover:border-fg-subtle hover:text-fg'
+                'inline-flex h-7 cursor-pointer items-center gap-1.5 px-3 text-xs transition-colors',
+                filter === f ? 'bevel-in bg-raised font-bold text-fg' : 'bevel-out bg-card text-fg active:bevel-in'
               )}
             >
               {f ? CONNECTION_LABEL[f] : 'All'}
