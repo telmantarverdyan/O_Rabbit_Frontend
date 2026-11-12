@@ -15,7 +15,7 @@ describe('StatusBadge', () => {
   });
 
   it.each([
-    ['SUCCEEDED', 'text-accent'],
+    ['SUCCEEDED', 'text-[#005a00]'],
     ['RUNNING', 'text-info'],
     ['PENDING', 'text-warn'],
     ['FAILED', 'text-danger'],
@@ -35,9 +35,9 @@ describe('StatusBadge', () => {
 
   it('applies size classes', () => {
     const { container: sm } = render(<StatusBadge status="ACTIVE" size="sm" />);
-    expect(sm.firstChild).toHaveClass('px-2');
+    expect(sm.firstChild).toHaveClass('px-1.5');
 
     const { container: lg } = render(<StatusBadge status="ACTIVE" size="lg" />);
-    expect(lg.firstChild).toHaveClass('px-3', 'text-sm');
+    expect(lg.firstChild).toHaveClass('px-2.5', 'text-sm');
   });
 });

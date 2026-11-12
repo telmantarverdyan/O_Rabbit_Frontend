@@ -1,4 +1,5 @@
 import React from 'react';
+import { Progress } from './Progress';
 
 interface TaskProgressBarProps {
   succeeded: number;
@@ -12,41 +13,27 @@ interface TaskProgressBarProps {
 export const TaskProgressBar: React.FC<TaskProgressBarProps> = ({ succeeded, running, failed, pending, canceled = 0 }) => {
   const total = succeeded + running + failed + pending + canceled;
   const segments = [
-    { label: 'Succeeded', value: succeeded, className: 'bg-accent' },
-    { label: 'Running', value: running, className: 'bg-info' },
-    { label: 'Pending', value: pending, className: 'bg-warn' },
+    { label: 'Succeeded', value: succeeded, className: 'bg-[#008000]' },
+    { label: 'Running', value: running, className: 'bg-accent' },
+    { label: 'Pending', value: pending, className: 'bg-[#c8a000]' },
     { label: 'Failed', value: failed, className: 'bg-danger' },
-    { label: 'Canceled', value: canceled, className: 'bg-fg-subtle' },
+    { label: 'Canceled', value: canceled, className: 'bg-line' },
   ];
   const pct = total ? Math.round((succeeded / total) * 100) : 0;
 
   return (
     <div className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <span className="text-3xl font-semibold tabular-nums text-fg">{pct}%</span>
+        <span className="font-pixel text-3xl font-bold tabular-nums text-fg">{pct}%</span>
         <span className="text-xs text-fg-muted">
           {succeeded} of {total} tasks done
         </span>
       </div>
-      <div
-        className="flex h-2.5 w-full overflow-hidden rounded-full bg-raised"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={pct}
-        aria-label="Tasks succeeded"
-      >
-        {total > 0 &&
-          segments
-            .filter((s) => s.value > 0)
-            .map((s) => (
-              <div key={s.label} className={`${s.className} h-full transition-[width] duration-500`} style={{ width: `${(s.value / total) * 100}%` }} />
-            ))}
-      </div>
+      <Progress value={pct} label="Tasks succeeded" />
       <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
         {segments.map((s) => (
           <li key={s.label} className="flex items-center gap-2 text-fg-muted">
-            <span className={`h-2 w-2 rounded-sm ${s.className}`} aria-hidden />
+            <span className={`h-2 w-2 border border-fg/60 ${s.className}`} aria-hidden />
             {s.label}
             <span className="tabular-nums text-fg">{s.value}</span>
           </li>

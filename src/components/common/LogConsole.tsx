@@ -64,7 +64,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
   };
 
   return (
-    <section className="rounded-lg border border-line bg-card">
+    <section className=" border border-line bg-card">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           <h2 className="text-sm font-semibold text-fg">Events</h2>
@@ -72,14 +72,14 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
             {filteredEvents.length === events.length ? events.length : `${filteredEvents.length} of ${events.length}`}
           </span>
           {connected && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-accent/25">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent motion-safe:animate-pulse" aria-hidden />
+            <span className="inline-flex items-center gap-1.5 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-accent/25">
+              <span className="h-1.5 w-1.5 bg-accent motion-safe:animate-pulse" aria-hidden />
               Live
             </span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div role="radiogroup" aria-label="Filter by level" className="inline-flex rounded-md border border-line bg-canvas p-0.5">
+          <div role="radiogroup" aria-label="Filter by level" className="inline-flex bevel-in bg-canvas p-0.5">
             {['ALL', 'INFO', 'WARN', 'ERROR'].map((lvl) => (
               <button
                 key={lvl}
@@ -87,7 +87,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
                 role="radio"
                 aria-checked={filterLevel === lvl}
                 onClick={() => setFilterLevel(lvl)}
-                className={`h-7 cursor-pointer rounded px-2.5 text-xs transition-colors ${filterLevel === lvl ? 'bg-raised font-medium text-fg' : 'text-fg-muted hover:text-fg'}`}
+                className={`h-[24px] cursor-pointer bg-card px-2.5 text-xs ${filterLevel === lvl ? 'bevel-in bg-raised font-bold' : 'bevel-out active:bevel-in'}`}
               >
                 {lvl === 'ALL' ? 'All' : lvl.charAt(0) + lvl.slice(1).toLowerCase()}
               </button>
@@ -101,7 +101,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
               placeholder="Search events"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 w-full rounded-md sm:w-48 border border-line bg-canvas pl-8 pr-3 text-xs text-fg placeholder:text-fg-subtle/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+              className="h-8 w-full sm:w-48 border border-line bg-canvas pl-8 pr-3 text-xs text-fg placeholder:text-fg-subtle/70 focus:outline-none"
             />
           </div>
           <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs text-fg-muted">
@@ -115,7 +115,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ events, connected, runId
 
       <div ref={logContainerRef} className="h-96 select-text overflow-y-auto bg-canvas/60 px-2 py-2 font-mono text-xs" role="log" aria-live="off">
         {filteredEvents.map((evt, idx) => (
-          <div key={evt.id || idx} className="flex flex-wrap items-start gap-x-3 rounded px-3 py-1 hover:bg-raised/40 sm:flex-nowrap">
+          <div key={evt.id || idx} className="flex flex-wrap items-start gap-x-3 px-3 py-1 hover:bg-raised/40 sm:flex-nowrap">
             <span className="w-20 flex-shrink-0 select-none tabular-nums text-fg-subtle">{evt.ts ? new Date(evt.ts).toLocaleTimeString() : '—'}</span>
             <span className={`w-12 flex-shrink-0 select-none font-medium ${levelStyle(evt.level)}`}>{(evt.level || 'INFO').toUpperCase()}</span>
             <span className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-relaxed text-fg">{evt.message}</span>

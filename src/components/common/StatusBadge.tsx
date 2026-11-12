@@ -38,11 +38,11 @@ function toneOf(status: string): Tone {
 }
 
 const toneStyles: Record<Tone, { badge: string; dot: string }> = {
-  success: { badge: 'bg-accent/10 text-accent ring-accent/25', dot: 'bg-accent' },
-  active: { badge: 'bg-info/10 text-info ring-info/25', dot: 'bg-info motion-safe:animate-pulse' },
-  pending: { badge: 'bg-warn/10 text-warn ring-warn/25', dot: 'bg-warn' },
-  failed: { badge: 'bg-danger/10 text-danger ring-danger/25', dot: 'bg-danger' },
-  neutral: { badge: 'bg-raised text-fg-muted ring-line', dot: 'bg-fg-subtle' },
+  success: { badge: 'text-[#005a00]', dot: 'bg-[#008000]' },
+  active: { badge: 'text-info', dot: 'bg-accent motion-safe:animate-pulse' },
+  pending: { badge: 'text-warn', dot: 'bg-[#c8a000]' },
+  failed: { badge: 'text-danger', dot: 'bg-danger' },
+  neutral: { badge: 'text-fg-muted', dot: 'bg-line' },
 };
 
 /** Status pill: the label carries the meaning, the color only reinforces it. */
@@ -53,13 +53,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className, siz
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-medium ring-1 ring-inset',
+        // A sunken status cell with a colored square: the label carries the meaning.
+        'bevel-thin inline-flex items-center gap-1.5 whitespace-nowrap bg-canvas font-bold',
         tone.badge,
-        size === 'sm' ? 'px-2 py-0.5 text-xs' : size === 'lg' ? 'px-3 py-1 text-sm' : 'px-2.5 py-0.5 text-xs',
+        size === 'sm' ? 'px-1.5 py-px text-xs' : size === 'lg' ? 'px-2.5 py-1 text-sm' : 'px-2 py-0.5 text-xs',
         className
       )}
     >
-      <span className={clsx('h-1.5 w-1.5 rounded-full', tone.dot)} aria-hidden />
+      <span className={clsx('h-2 w-2 border border-fg/60', tone.dot)} aria-hidden />
       {label}
     </span>
   );

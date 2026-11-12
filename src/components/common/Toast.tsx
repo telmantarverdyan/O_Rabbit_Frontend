@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { Window } from './Window';
 import { clsx } from 'clsx';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -65,24 +66,19 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2" aria-live="polite">
+      {/* Above the taskbar, like Win9x balloon/system dialogs. */}
+      <div className="pointer-events-none fixed bottom-14 right-3 z-[60] flex w-full max-w-sm flex-col gap-2" aria-live="polite">
         {toasts.map((toast) => {
           const Icon = { success: CheckCircle2, error: XCircle, warning: AlertTriangle, info: Info }[toast.type];
-          const tone = { success: 'text-accent', error: 'text-danger', warning: 'text-warn', info: 'text-info' }[toast.type];
+          const tone = { success: 'text-[#008000]', error: 'text-danger', warning: 'text-warn', info: 'text-info' }[toast.type];
           return (
-            <div
-              key={toast.id}
-              role={toast.type === 'error' ? 'alert' : 'status'}
-              className="pointer-events-auto flex animate-fade-in items-start gap-3 rounded-lg border border-line bg-card p-3.5 shadow-xl shadow-black/30"
-            >
-              <Icon className={clsx('mt-0.5 h-4 w-4 flex-shrink-0', tone)} aria-hidden />
-              <div className="min-w-0 flex-1">
-                {toast.title && <p className="text-sm font-medium text-fg">{toast.title}</p>}
-                <p className="break-words text-sm text-fg-muted">{toast.message}</p>
-              </div>
-              <button onClick={() => removeToast(toast.id)} className="cursor-pointer rounded p-0.5 text-fg-subtle hover:text-fg" aria-label="Dismiss notification">
-                <X className="h-4 w-4" />
-              </button>
+            <div key={toast.id} role={toast.type === 'error' ? 'alert' : 'status'} className="pointer-events-auto animate-fade-in shadow-[3px_3px_0_rgba(0,0,0,0.45)]">
+              <Window title={toast.title ?? { success: 'System', error: 'Error', warning: 'Warning', info: 'System' }[toast.type]} onClose={() => removeToast(toast.id)} controls>
+                <div className="flex items-start gap-3 p-3">
+                  <Icon className={clsx('mt-0.5 h-6 w-6 flex-shrink-0', tone)} aria-hidden />
+                  <p className="break-words text-[13px] text-fg">{toast.message}</p>
+                </div>
+              </Window>
             </div>
           );
         })}

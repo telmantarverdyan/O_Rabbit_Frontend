@@ -13,27 +13,28 @@ interface MetricCardProps {
 }
 
 const iconColor = {
-  emerald: 'text-accent bg-accent/10',
-  cyan: 'text-info bg-info/10',
-  blue: 'text-info bg-info/10',
-  amber: 'text-warn bg-warn/10',
-  purple: 'text-violet-300 bg-violet-400/10',
-  crimson: 'text-danger bg-danger/10',
-  slate: 'text-fg-muted bg-raised',
+  emerald: 'text-accent',
+  cyan: 'text-info',
+  blue: 'text-info',
+  amber: 'text-warn',
+  purple: 'text-[#5a005a]',
+  crimson: 'text-danger',
+  slate: 'text-fg-subtle',
 } as const;
 
+/** A small stat window: title bar with the label, the value large in a sunken field. */
 export const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, icon: Icon, color = 'emerald', className, trend }) => (
-  <div className={clsx('min-w-0 rounded-md border border-line bg-card/90 p-4 transition-colors hover:border-accent/50', className)}>
-    <div className="flex items-start justify-between gap-3">
-      <p className="text-[11px] font-medium uppercase tracking-widest text-fg-muted">{title}</p>
-      <span className={clsx('rounded-md p-1.5', iconColor[color])}>
-        <Icon className="h-4 w-4" aria-hidden />
-      </span>
+  <div className={clsx('bevel-out min-w-0 bg-card p-[2px]', className)}>
+    <div className="title-bar flex h-[22px] items-center gap-1.5 px-1.5">
+      <Icon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+      <p className="truncate font-pixel text-xs font-semibold uppercase tracking-wide">{title}</p>
     </div>
-    <div className="mt-2 flex items-baseline gap-2">
-      <span className="text-2xl font-bold tabular-nums tracking-tight text-fg glow">{value}</span>
-      {trend && <span className="text-xs text-fg-muted">{trend}</span>}
+    <div className="bevel-in m-1.5 bg-canvas px-2 py-1.5">
+      <div className="flex items-baseline gap-2">
+        <span className={clsx('font-pixel text-2xl font-bold tabular-nums', iconColor[color])}>{value}</span>
+        {trend && <span className="text-xs text-fg-muted">{trend}</span>}
+      </div>
+      {subtitle && <p className="truncate text-xs text-fg-subtle">{subtitle}</p>}
     </div>
-    {subtitle && <p className="mt-1 text-xs text-fg-subtle">{subtitle}</p>}
   </div>
 );

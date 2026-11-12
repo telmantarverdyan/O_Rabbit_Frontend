@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Window } from './Window';
 
 interface ModalProps {
   isOpen: boolean;
@@ -45,20 +45,18 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div className={`relative z-10 flex max-h-[90vh] w-full ${maxWidthClasses[maxWidth]} animate-fade-in flex-col overflow-hidden rounded-xl border border-line bg-card shadow-2xl shadow-black/40`}>
-        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
-          <div className="min-w-0">
-            <h3 id="modal-title" className="text-base font-semibold text-fg">{title}</h3>
-            {subtitle && <p className="mt-0.5 text-xs text-fg-muted">{subtitle}</p>}
-          </div>
-          <button onClick={onClose} className="-mr-1 cursor-pointer rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-raised hover:text-fg" aria-label="Close dialog">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="space-y-4 overflow-y-auto p-5">{children}</div>
-      </div>
+      {/* Win9x dialogs had no blur; a light dither keeps the desktop visible behind. */}
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} aria-hidden />
+      <Window
+        title={title}
+        titleId="modal-title"
+        onClose={onClose}
+        status={subtitle}
+        className={`relative z-10 max-h-[90vh] w-full ${maxWidthClasses[maxWidth]} shadow-[4px_4px_0_rgba(0,0,0,0.5)]`}
+        bodyClassName="space-y-4 overflow-y-auto p-4"
+      >
+        {children}
+      </Window>
     </div>
   );
 };
-

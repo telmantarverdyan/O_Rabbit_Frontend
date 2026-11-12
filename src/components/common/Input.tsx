@@ -3,12 +3,13 @@ import { clsx } from 'clsx';
 import { LucideIcon } from 'lucide-react';
 
 export const fieldClass =
-  'w-full rounded-md border border-line bg-canvas px-3 text-sm text-fg placeholder:text-fg-subtle/70 transition-colors hover:border-fg-subtle/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-50';
+  // Win9x text box: white and sunken; no rounding.
+  'bevel-in w-full bg-canvas px-2 text-[13px] text-fg placeholder:text-fg-subtle/80 focus:outline-none disabled:bg-card disabled:text-fg-subtle';
 
-export const labelClass = 'block text-xs font-medium text-fg-muted';
+export const labelClass = 'block text-xs text-fg';
 
 export const FieldHint: React.FC<{ helperText?: string; error?: string; id?: string }> = ({ helperText, error, id }) => {
-  if (error) return <p id={id} className="text-xs text-danger">{error}</p>;
+  if (error) return <p id={id} className="text-xs font-bold text-danger">{error}</p>;
   if (helperText) return <p id={id} className="text-xs leading-relaxed text-fg-subtle">{helperText}</p>;
   return null;
 };
@@ -27,7 +28,7 @@ export const Input: React.FC<InputProps> = ({ label, helperText, error, classNam
   const inputId = id || reactId;
   const hintId = `${inputId}-hint`;
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {label && (
         <label htmlFor={inputId} className={labelClass}>
           {label}
@@ -35,12 +36,12 @@ export const Input: React.FC<InputProps> = ({ label, helperText, error, classNam
         </label>
       )}
       <div className="relative">
-        {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden />}
+        {Icon && <Icon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden />}
         <input
           id={inputId}
           aria-invalid={!!error || undefined}
           aria-describedby={helperText || error ? hintId : undefined}
-          className={clsx(fieldClass, 'h-9', Icon && 'pl-9', error && 'border-danger focus:border-danger focus:ring-danger/25', className)}
+          className={clsx(fieldClass, 'h-[28px]', Icon && 'pl-8', error && 'outline outline-1 outline-danger', className)}
           {...props}
         />
       </div>
@@ -61,7 +62,7 @@ export const Select: React.FC<SelectProps> = ({ label, helperText, error, option
   const selectId = id || reactId;
   const hintId = `${selectId}-hint`;
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {label && (
         <label htmlFor={selectId} className={labelClass}>
           {label}
@@ -70,11 +71,11 @@ export const Select: React.FC<SelectProps> = ({ label, helperText, error, option
       <select
         id={selectId}
         aria-describedby={helperText || error ? hintId : undefined}
-        className={clsx(fieldClass, 'h-9 cursor-pointer pr-8', error && 'border-danger', className)}
+        className={clsx(fieldClass, 'h-[28px] cursor-pointer pr-6', error && 'outline outline-1 outline-danger', className)}
         {...props}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-card text-fg">
+          <option key={opt.value} value={opt.value} className="bg-canvas text-fg">
             {opt.label}
           </option>
         ))}

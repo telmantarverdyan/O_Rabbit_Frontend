@@ -1,94 +1,64 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { clsx } from 'clsx';
-import { Briefcase, Database, FileUp, LayoutDashboard, ListOrdered, Play, ScrollText, Server, X } from 'lucide-react';
-import { RabbitLogo } from '@/components/branding/RabbitLogo';
+import { Briefcase, Database, FileUp, ListOrdered, LucideIcon, Monitor, Play, ScrollText, Server } from 'lucide-react';
 
-interface NavItem {
+export interface NavItem {
   to: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
+  /** Icon colors, drawn like the chunky Win9x desktop icons. */
+  color: string;
   end?: boolean;
 }
 
-const navGroups: Array<{ label: string; items: NavItem[] }> = [
+export const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Run',
     items: [
-      { to: '/runs/new', label: 'New run', icon: Play },
-      { to: '/runs/file', label: 'Run from file', icon: FileUp },
+      { to: '/runs/new', label: 'New run', icon: Play, color: 'text-[#005a00] fill-[#3ec43e]' },
+      { to: '/runs/file', label: 'Run from file', icon: FileUp, color: 'text-[#5c4500] fill-[#ffd84d]' },
     ],
   },
   {
     label: 'Monitor',
     items: [
-      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-      { to: '/runs', label: 'Runs', icon: ListOrdered, end: true },
-      { to: '/logs', label: 'Logs', icon: ScrollText },
+      { to: '/', label: 'Overview', icon: Monitor, color: 'text-[#202020] fill-[#4a8fd8]', end: true },
+      { to: '/runs', label: 'Runs', icon: ListOrdered, color: 'text-[#000080] fill-white', end: true },
+      { to: '/logs', label: 'Logs', icon: ScrollText, color: 'text-[#202020] fill-white' },
     ],
   },
   {
     label: 'Configure',
     items: [
-      { to: '/jobs', label: 'Jobs', icon: Briefcase },
-      { to: '/connections', label: 'Connections', icon: Database },
-      { to: '/workers', label: 'Workers', icon: Server },
+      { to: '/jobs', label: 'Jobs', icon: Briefcase, color: 'text-[#4a2a00] fill-[#c8873c]' },
+      { to: '/connections', label: 'Connections', icon: Database, color: 'text-[#202020] fill-[#c0c0c0]' },
+      { to: '/workers', label: 'Workers', icon: Server, color: 'text-[#202020] fill-[#9a9a9a]' },
     ],
   },
 ];
 
-interface SidebarProps {
-  isMobileOpen?: boolean;
-  onClose?: () => void;
-}
+export const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
-export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onClose }) => (
-  <>
-    {isMobileOpen && <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={onClose} aria-hidden />}
-    <aside
-      className={clsx(
-        'fixed inset-y-0 left-0 z-40 flex w-60 flex-shrink-0 flex-col border-r border-line bg-card transition-transform duration-200 md:static md:translate-x-0',
-        isMobileOpen ? 'translate-x-0' : '-translate-x-full'
-      )}
-      aria-label="Main navigation"
-    >
-      <div className="flex h-14 items-center justify-between border-b border-line px-4">
-        <RabbitLogo size="sm" />
-        <button onClick={onClose} className="cursor-pointer rounded-md p-1.5 text-fg-subtle hover:bg-raised hover:text-fg md:hidden" aria-label="Close navigation">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-        {navGroups.map((group) => (
-          <div key={group.label}>
-            <p className="mb-1.5 px-2.5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">{group.label}</p>
-            <ul className="space-y-0.5">
-              {group.items.map(({ to, label, icon: Icon, end }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    end={end}
-                    onClick={() => onClose?.()}
-                    className={({ isActive }) =>
-                      clsx(
-                        'group flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors',
-                        isActive ? 'bg-accent/10 font-semibold text-accent glow ring-1 ring-inset ring-accent/40' : 'text-fg-muted hover:bg-raised/60 hover:text-fg'
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <Icon className={clsx('h-4 w-4', isActive ? 'text-accent' : 'text-fg-subtle group-hover:text-fg-muted')} aria-hidden />
-                        {label}
-                      </>
-                    )}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
-    </aside>
-  </>
+/** Desktop icons down the left edge (md and up). The current page looks "selected". */
+export const DesktopIcons: React.FC = () => (
+  <nav aria-label="Main navigation" className="hidden w-[92px] flex-shrink-0 flex-col items-center gap-3 overflow-y-auto py-4 md:flex">
+    {NAV_ITEMS.map(({ to, label, icon: Icon, color, end }) => (
+      <NavLink key={to} to={to} end={end} className="group flex w-[84px] flex-col items-center gap-1 focus:outline-none">
+        {({ isActive }) => (
+          <>
+            <Icon className={clsx('h-9 w-9 drop-shadow-[2px_2px_0_rgba(0,0,0,0.35)]', color, isActive && 'opacity-80')} strokeWidth={1.75} />
+            <span
+              className={clsx(
+                'px-1 text-center font-pixel text-xs uppercase leading-tight',
+                isActive ? 'bg-accent text-accent-fg outline-dotted outline-1 outline-white' : 'desktop-text group-focus-visible:bg-accent'
+              )}
+            >
+              {label}
+            </span>
+          </>
+        )}
+      </NavLink>
+    ))}
+  </nav>
 );

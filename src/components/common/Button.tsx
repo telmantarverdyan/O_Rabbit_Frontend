@@ -10,31 +10,22 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
+// Win9x push buttons: raised gray, sunken while pressed. The default (primary)
+// button has the extra dark outline Windows draws around the Enter button.
 const variantStyles = {
-  // Inverse video, like a selected item on a green-screen terminal.
-  primary: 'bg-accent text-accent-fg hover:bg-accent-strong font-semibold uppercase tracking-wide glow-box',
-  secondary: 'bg-canvas text-accent border border-line hover:border-accent/70 hover:bg-raised',
-  danger: 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20',
-  ghost: 'text-fg-muted hover:text-accent hover:bg-raised',
+  primary: 'bevel-out font-bold outline outline-1 outline-fg active:bevel-in',
+  secondary: 'bevel-out active:bevel-in',
+  danger: 'bevel-out text-danger font-bold active:bevel-in',
+  ghost: 'border-2 border-transparent hover:bevel-out active:bevel-in',
 } as const;
 
 const sizeStyles = {
-  sm: 'h-8 px-2.5 text-xs gap-1.5',
-  md: 'h-9 px-3.5 text-sm gap-2',
-  lg: 'h-11 px-5 text-sm gap-2',
+  sm: 'h-[26px] px-2 text-xs gap-1.5',
+  md: 'h-[30px] px-3 text-[13px] gap-1.5',
+  lg: 'h-[36px] px-4 text-sm gap-2',
 } as const;
 
-export const Button: React.FC<ButtonProps> = ({
-  children,
-  variant = 'primary',
-  size = 'md',
-  icon: Icon,
-  loading = false,
-  className,
-  disabled,
-  type = 'button',
-  ...props
-}) => {
+export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', size = 'md', icon: Icon, loading = false, className, disabled, type = 'button', ...props }) => {
   const resolved = variant === 'cyber' ? 'primary' : variant === 'outline' ? 'secondary' : variant;
   // toArray drops null/undefined/booleans; an empty string marks an icon-only button.
   const hasText = React.Children.toArray(children).some((c) => c !== '');
@@ -44,10 +35,10 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={clsx(
-        'inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap bg-card font-pixel text-fg active:translate-x-px active:translate-y-px disabled:cursor-not-allowed disabled:text-fg-subtle disabled:[text-shadow:1px_1px_0_#fff]',
         variantStyles[resolved],
         sizeStyles[size],
-        !hasText && (size === 'sm' ? 'w-8 px-0' : 'w-9 px-0'),
+        !hasText && (size === 'sm' ? 'w-[26px] px-0' : 'w-[30px] px-0'),
         className
       )}
       {...props}
