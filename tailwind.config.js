@@ -24,16 +24,20 @@ export default {
           fg: token('accent-fg'),
         },
         danger: token('danger'),
+        desktop: token('desktop'),
+        title: { DEFAULT: token('title'), to: token('title-to') },
         warn: token('warn'),
         info: token('info'),
       },
       fontFamily: {
-        // Monospace everywhere for the terminal look.
-        sans: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        // Retro desktop: a Windows-9x-like UI font for text, a pixel font for titles and menus.
+        sans: ['Tahoma', 'Verdana', 'Segoe UI', 'sans-serif'],
+        pixel: ['Pixelify Sans', 'Tahoma', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       keyframes: {
         'fade-in': { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'none' } },
+        'progress-sweep': { from: { transform: 'translateX(-100%)' }, to: { transform: 'translateX(300%)' } },
       },
       animation: {
         'fade-in': 'fade-in 180ms ease-out',
