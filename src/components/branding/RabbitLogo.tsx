@@ -1,5 +1,5 @@
 import React from 'react';
-import rabbitLogoUrl from '@/assets/rabbit/orabbit-logo.png';
+import rabbitLogoUrl from '@/assets/rabbit/orabbit-pixel.svg';
 
 interface RabbitLogoProps {
   className?: string;
@@ -16,11 +16,11 @@ const imageSizeClasses = {
 
 export const RabbitLogo: React.FC<RabbitLogoProps> = ({ className = '', compact = false, size = 'md' }) => (
   <div className={`flex items-center gap-2.5 ${className}`}>
-    <img alt="O_Rabbit" src={rabbitLogoUrl} className={`shrink-0 rounded-lg object-contain drop-shadow-[0_0_12px_rgb(0_255_102/0.45)] ${imageSizeClasses[size]}`} />
+    <img alt="O_Rabbit" src={rabbitLogoUrl} className={`shrink-0 object-contain [image-rendering:pixelated] ${imageSizeClasses[size]}`} />
     {!compact && (
       <div className="min-w-0 leading-tight">
-        <div className="text-sm font-bold uppercase tracking-[0.2em] text-fg glow">O_Rabbit</div>
-        <div className="text-[10px] uppercase tracking-[0.25em] text-fg-subtle">Operator console</div>
+        <div className="font-pixel text-sm font-bold uppercase">O_Rabbit</div>
+        <div className="text-[11px] text-fg-subtle">Operator console</div>
       </div>
     )}
   </div>
