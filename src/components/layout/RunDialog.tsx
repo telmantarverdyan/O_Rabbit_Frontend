@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/common/Button';
 import { Window } from '@/components/common/Window';
@@ -13,6 +14,8 @@ export const RunDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const navigate = useNavigate();
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, true);
 
   const open = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +37,7 @@ export const RunDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-start p-3 pb-14" role="dialog" aria-modal="true" aria-labelledby="run-title">
+    <div ref={dialogRef} onKeyDown={(e) => e.key === 'Escape' && onClose()} className="fixed inset-0 z-50 flex items-end justify-start p-3 pb-14" role="dialog" aria-modal="true" aria-labelledby="run-title">
       <div className="fixed inset-0" onClick={onClose} aria-hidden />
       <Window title="Run" titleId="run-title" onClose={onClose} className="relative w-full max-w-md shadow-[4px_4px_0_rgba(0,0,0,0.45)]" bodyClassName="p-3">
         <form onSubmit={open} className="space-y-3">
