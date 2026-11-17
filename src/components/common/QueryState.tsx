@@ -70,7 +70,7 @@ export const PageTitle: React.FC<{ title: string; subtitle?: React.ReactNode; ac
   <div className="flex flex-wrap items-end justify-between gap-4">
     <div className="min-w-0">
       {eyebrow && <div className="desktop-text mb-1 text-xs">{eyebrow}</div>}
-      <h1 className="desktop-text font-pixel text-3xl font-bold uppercase tracking-wide">{title}</h1>
+      <h1 className="desktop-text font-pixel text-3xl font-bold tracking-wide">{title}</h1>
       {subtitle && <p className="desktop-text mt-1 max-w-3xl text-sm">{subtitle}</p>}
     </div>
     {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

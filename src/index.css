@@ -134,3 +134,22 @@ input[type='checkbox'],
 [aria-busy='true'] {
   cursor: progress;
 }
+
+/* Touch screens: Win9x controls are ~26px, fine for a mouse (WCAG 2.2 asks 24px)
+   but too small for fingers. Only coarse pointers get roomier targets. */
+@media (pointer: coarse) {
+  button,
+  select,
+  [role='menuitem'],
+  [role='menuitemcheckbox'],
+  input:not([type='checkbox']):not([type='radio']) {
+    min-height: 40px;
+  }
+  button:not(:has(span)) {
+    min-width: 40px;
+  }
+  input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+  }
+}

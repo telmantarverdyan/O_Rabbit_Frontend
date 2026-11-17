@@ -29,7 +29,7 @@ export const TaskProgressBar: React.FC<TaskProgressBarProps> = ({ succeeded, run
           {succeeded} of {total} tasks done
         </span>
       </div>
-      <Progress value={pct} label="Tasks succeeded" />
+      <Progress value={pct} label="Tasks succeeded" tone="bg-[#008000]" />
       <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
         {segments.map((s) => (
           <li key={s.label} className="flex items-center gap-2 text-fg-muted">

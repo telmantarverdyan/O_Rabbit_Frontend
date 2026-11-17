@@ -140,12 +140,15 @@ export const RunDetail: React.FC = () => {
             />
 
             {run.error_summary && (
-              <div role="alert" className="bevel-thin bg-canvas font-bold p-4 text-sm text-danger">
-                <p className="font-semibold">
-                  {run.failure_phase ? `Failed during ${run.failure_phase}` : 'Error'}
-                  {run.failure_class ? ` · ${run.failure_class}` : ''}
-                </p>
-                <p className="mt-1 whitespace-pre-wrap break-words">{run.error_summary}</p>
+              <div role="alert" className="bevel-out flex items-start gap-3 bg-card p-3">
+                <XCircle className="h-8 w-8 flex-shrink-0 fill-danger text-canvas" aria-hidden />
+                <div className="min-w-0">
+                  <p className="font-bold">
+                    {run.failure_phase ? `The run failed during ${run.failure_phase}` : 'The run failed'}
+                    {run.failure_class ? ` (${run.failure_class})` : ''}
+                  </p>
+                  <p className="bevel-in mt-1.5 whitespace-pre-wrap break-words bg-canvas px-2 py-1 font-mono text-xs text-danger">{run.error_summary}</p>
+                </div>
               </div>
             )}
             {run.operator_action_required && (
