@@ -19,6 +19,15 @@ const variantStyles = {
   ghost: 'border-2 border-transparent hover:bevel-out active:bevel-in',
 } as const;
 
+// Icon-only buttons are square. They must not also get the text padding:
+// px-2 and px-0 together resolve by stylesheet order (px-2 wins), which
+// crushed the icon to a few pixels.
+const iconOnlyStyles = {
+  sm: 'h-[26px] w-[26px]',
+  md: 'h-[30px] w-[30px]',
+  lg: 'h-[36px] w-[36px]',
+} as const;
+
 const sizeStyles = {
   sm: 'h-[26px] px-2 text-xs gap-1.5',
   md: 'h-[30px] px-3 text-[13px] gap-1.5',
@@ -29,6 +38,8 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', s
   const resolved = variant === 'cyber' ? 'primary' : variant === 'outline' ? 'secondary' : variant;
   // toArray drops null/undefined/booleans; an empty string marks an icon-only button.
   const hasText = React.Children.toArray(children).some((c) => c !== '');
+  // A flat icon with no label reads as noise; icon-only buttons always get a raised edge.
+  const look = !hasText && resolved === 'ghost' ? 'secondary' : resolved;
   return (
     <button
       type={type}
@@ -36,9 +47,8 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', s
       aria-busy={loading || undefined}
       className={clsx(
         'inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap bg-card font-pixel text-fg active:translate-x-px active:translate-y-px disabled:cursor-not-allowed disabled:text-fg-subtle disabled:[text-shadow:1px_1px_0_#fff]',
-        variantStyles[resolved],
-        sizeStyles[size],
-        !hasText && (size === 'sm' ? 'w-[26px] px-0' : 'w-[30px] px-0'),
+        variantStyles[look],
+        hasText ? sizeStyles[size] : iconOnlyStyles[size],
         className
       )}
       {...props}
@@ -46,7 +56,7 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', s
       {loading ? (
         <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
       ) : (
-        Icon && <Icon className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} aria-hidden />
+        Icon && <Icon className={size === 'sm' && hasText ? 'h-3.5 w-3.5' : 'h-4 w-4'} aria-hidden />
       )}
       {hasText && <span>{children}</span>}
     </button>
